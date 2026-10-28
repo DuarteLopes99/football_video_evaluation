@@ -1,0 +1,29 @@
+# Where the match recordings live — see docs/VIDEO_STORAGE.md.
+#
+# A library is a folder. The launcher (python scripts/launcher.py) lists the videos of every library,
+# and new recordings dropped in the launcher go to the FIRST one. Paths may be relative to the project,
+# absolute, or start with ~. Recordings are found by file name, so moving a video between libraries
+# never breaks a previous run, setup or report.
+
+libraries:
+  - name: Local
+    path: data/videos            # inside the project, git-ignored (~300 MB per 2-h match at 640x360)
+
+  # Uncomment the ones you use (remove the leading '#'):
+
+  # - name: External SSD         # plug-in drive; the launcher shows it only while it is connected
+  #   path: /Volumes/FOOTBALL/matches
+
+  # - name: Google Drive         # Google Drive for desktop in "Stream files" mode: files live in the
+  #   path: ~/Library/CloudStorage/GoogleDrive-<your-account>/My Drive/Football/matches
+  #   note: streamed — downloaded on first open, can be freed again with "Remove download"
+
+  # - name: OneDrive             # Files On-Demand ("Free up space" after the analysis)
+  #   path: ~/Library/CloudStorage/OneDrive-Personal/Football/matches
+
+  # - name: iCloud Drive         # with "Optimise Mac Storage" on
+  #   path: ~/Library/Mobile Documents/com~apple~CloudDocs/Football/matches
+
+# Library where the launcher's "Archive" button moves an analysed recording (null = button hidden).
+# Its outputs (report, opportunities, clips) stay in outputs/<match>.
+archive: null

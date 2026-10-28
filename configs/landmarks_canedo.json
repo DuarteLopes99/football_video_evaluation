@@ -1,0 +1,61 @@
+{
+  "frames": [
+    {
+      "t": 60.0,
+      "points": {
+        "halfway_top": [
+          312,
+          243
+        ],
+        "circle_top": [
+          318,
+          261
+        ],
+        "circle_bottom": [
+          325,
+          299
+        ]
+      }
+    },
+    {
+      "t": 669.4,
+      "points": {
+        "post_l_bottom": [
+          147,
+          201
+        ],
+        "post_l_top": [
+          197,
+          200
+        ]
+      }
+    },
+    {
+      "t": 538.8,
+      "points": {
+        "post_r_top": [
+          346,
+          212
+        ],
+        "post_r_bottom": [
+          405,
+          213
+        ]
+      }
+    },
+    {
+      "t": 873.8,
+      "points": {
+        "post_r_top": [
+          352,
+          213
+        ],
+        "post_r_bottom": [
+          411,
+          214
+        ]
+      }
+    }
+  ],
+  "note": "Landmarks read by eye on 640x360 frames of 2026-10-18_UD_Mansores_vs_Canedo_FC_J2.mp4 (goal-post bases on the goal line; halfway line / centre circle)."
+}

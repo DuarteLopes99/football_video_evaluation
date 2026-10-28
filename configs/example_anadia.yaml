@@ -1,0 +1,18 @@
+# Example: AFA live-stream of Anadia FC - SVA (fixed elevated camera at the halfway line).
+# Re-uses the camera model calibrated by the sibling project ../offiside_code.
+teams:
+  team_names: [SVA, AFC]          # cluster 0 / cluster 1 — check the order after the first run
+video:
+  analysis_fps: 10
+  ignore_regions: [[0, 0, 800, 200], [2500, 80, 2930, 170]]   # score bug + AFA/LIVE logos
+detection:
+  backend: yolox_onnx
+  model_path: models/yolox.onnx
+  tile: 1150
+  tile_stride: 900
+pitch:
+  homography: static              # this stream camera pans a little: switch to 'flow' + anchors if lines drift
+  calibration_file: ../offiside_code/calibration/anadia_camera.json
+scoreboard:
+  enabled: true
+  roi: [350, 85, 500, 160]        # the "1 - 1" digits (full-resolution pixels)

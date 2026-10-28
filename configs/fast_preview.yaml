@@ -1,0 +1,9 @@
+# Fast first pass over a full match on a laptop CPU. Since v0.2 the same is available as `--speed fast`
+# (launcher: Speed = fast) on top of any venue config; this file additionally downscales to 1280 px
+# (one detector tile per frame, 5 analysed fps).
+# Expect fewer ball detections (small ball) -> fewer passes/shots found; use default.yaml for the final run.
+video:
+  analysis_fps: 5
+  resize_width: 1280
+detection:
+  tile: 1280

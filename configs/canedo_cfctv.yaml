@@ -1,0 +1,38 @@
+# UD Mansores vs Canedo FC (18/10, jornada 2) — CFC TV stream, Canedo FC home ground.
+# Recording profile: docs/RECORDING_PROFILE.md
+#   * ONE camera on the near side at the halfway line, ~2.5 m behind the touchline, ~4 m high; the operator PANS/TILTS/ZOOMS
+#   * 640x360 @ 30 fps, H.264, no audio track content (silent), ~2 h 03 min incl. warm-up and half-time
+#   * overlays: club crest top-left, "CFC TV" bottom-right; no score bug / match clock
+#   * strong tree shadows on the near half, getting darker in the 2nd half (sunset)
+video:
+  analysis_fps: 5                 # 640x360 is cheap to decode; 5 fps keeps ~0.6 s/frame on a laptop CPU
+  ignore_regions: [[0, 0, 75, 70], [520, 310, 640, 345]]   # crest + CFC TV logo
+detection:
+  backend: yolox_onnx
+  model_path: models/yolox.onnx
+  tile: 360                       # 640x360 -> two 360 px tiles, each upscaled to the 640 px network input
+  tile_stride: 280
+  conf_player: 0.30
+  conf_ball: 0.10
+  min_box_h_frac: 0.02            # people shorter than ~7 px are ignored
+teams:
+  backend: color
+  team_names: [Canedo FC, UD Mansores]
+  kit_colors: [[0, 215, 255], [45, 95, 35]]   # BGR: yellow shirts, dark green shirts -> maps clusters to names
+pitch:
+  length: 105.4                   # measured by the venue calibration (scripts/calibrate_ptz.py) — not 105 x 68
+  width: 61.6
+  homography: ptz                 # fixed-position pan/tilt/zoom camera (football_eval/ptz.py)
+  calibration_file: configs/camera_canedo_ptz.json
+  ptz_refine_every: 2
+  ptz_max_err_px: 3.0
+ball:
+  detector: motion                # COCO detectors do not see a 2-5 px ball; motion-compensated blobs instead
+  max_gap_s: 1.5
+possession:
+  control_radius_m: 2.0           # position noise is larger at this resolution
+  duel_radius_m: 2.0
+match:
+  halves: [[430, 3315], [4262, 7370]]   # kick-offs at 7:10 and 71:02 of the video; ends at ~55:15 and ~122:50
+scoreboard:
+  enabled: false                  # the stream has no score bug

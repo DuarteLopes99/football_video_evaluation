@@ -1,0 +1,44 @@
+# Default configuration — every key maps to football_eval/config.py (see the comments there)
+# and the analytics thresholds are explained in docs/STATS_RULEBOOK.md.
+# Copy this file per match / venue and change: teams.team_names, pitch.calibration_file,
+# video.ignore_regions (score bug, logos), scoreboard.roi, match.halves if known.
+video:
+  analysis_fps: 10.0
+  start_s: 0.0
+  end_s: null
+  resize_width: null
+  only_periods: true  # skip pre-match / half-time / post-match when the setup has the periods
+  ignore_regions: []
+detection:
+  backend: yolox_onnx
+  model_path: models/yolox.onnx
+  class_map: {person: player, sports ball: ball, player: player, goalkeeper: goalkeeper, referee: referee, ball: ball}
+  conf_player: 0.3
+  conf_ball: 0.15
+  imgsz: 1280
+  tile: 1024          # max tile (px); 1920x1080 pitch -> 2 tiles
+  tile_overlap: 96
+  pitch_roi: true     # tiles only over the calibrated pitch (+ margin)
+  runtime: auto       # onnxruntime (CoreML on a Mac if faster) else cv2.dnn
+  device: cpu
+  min_box_h_frac: 0.012
+tracking: {backend: iou, max_age_s: 1.0, min_iou: 0.2, max_center_dist_px: 80.0}
+teams:
+  backend: color
+  fit_frames: 60
+  outlier_quantile: 0.97
+  outlier_factor: 1.6
+  team_names: [Team A, Team B]
+pitch: {length: 105.0, width: 68.0, homography: static, calibration_file: null, keypoint_model: null, keypoint_layout: roboflow32,
+  keypoint_conf: 0.5, offpitch_margin_m: 2.5, reanchor_every_s: 0.0}
+ball: {max_speed_ms: 40.0, max_gap_s: 1.0, smooth_window: 5}
+possession: {control_radius_m: 1.5, duel_radius_m: 1.5, max_ball_speed_control: 9.0, min_control_s: 0.2, team_switch_s: 0.6}
+events: {max_pass_s: 6.0, min_pass_length_m: 3.0, progressive_pass_m: 10.0, shot_min_speed: 11.0, shot_max_dist: 35.0,
+  shot_goal_tolerance: 3.0, block_window_s: 0.8, block_max_dist: 12.0, dead_ball_min_s: 3.0, out_margin_m: 0.5,
+  still_speed_ms: 1.6, static_ball_spread_m: 0.8, recovery_min_s: 0.3, corner_radius_m: 3.0, throwin_band_m: 2.0,
+  kickoff_radius_m: 3.0, penalty_radius_m: 2.0, goal_confirm_window_s: 150.0, goal_min_stoppage_s: 20.0, kickoff_own_half_share: 0.9,
+  static_still_min_s: 5.0, static_ball_min_s: 6.0, final_third_x: 70.0, ppda_zone_x: 42.0}
+match: {home_attacks_right_first_half: null, halves: null, half_length_min: 45.0}
+scoreboard: {enabled: false, roi: null, change_threshold: 18.0, min_persist_s: 3.0}
+xg: {model_file: models/xg_model.json, variant: full}
+output_dir: outputs

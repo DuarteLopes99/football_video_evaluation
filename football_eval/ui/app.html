@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Match setup</title>
+<style>
+:root{
+  --bg:#121417; --panel:#1b1e22; --panel2:#23272c; --line:#30353b; --text:#e7e9ec; --muted:#9aa1a9;
+  --accent:#8fd16a; --accent2:#5fb3f0; --ok:#4fbf7f; --warn:#e3a73c; --bad:#e5594f;
+  --t0:#4a90e2; --t1:#ef8a3c; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif}
+header{display:flex;align-items:center;gap:14px;padding:10px 18px;border-bottom:1px solid var(--line);background:#16191c}
+header h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.2px}
+header .file{color:var(--muted);font-family:var(--mono);font-size:12px}
+header .spacer{flex:1}
+.pill{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--panel2);color:var(--muted)}
+.pill.ok{color:#0d1a12;background:var(--ok)} .pill.err{background:var(--bad);color:#fff}
+main{display:grid;grid-template-columns:210px minmax(0,1fr) 400px;gap:0;height:calc(100vh - 49px)}
+nav{border-right:1px solid var(--line);padding:12px 8px;overflow:auto}
+nav button{display:flex;width:100%;align-items:center;gap:9px;padding:9px 10px;margin:2px 0;border:0;border-radius:7px;
+  background:transparent;color:var(--text);text-align:left;cursor:pointer;font-size:13.5px}
+nav button:hover{background:var(--panel)} nav button.active{background:var(--panel2)}
+nav .n{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;background:var(--panel2);color:var(--muted);flex:none}
+nav .st-ok .n{background:var(--ok);color:#0d1a12} nav .st-warn .n{background:var(--warn);color:#1e1503} nav .st-missing .n{background:var(--bad);color:#fff}
+nav .hint{color:var(--muted);font-size:12px;padding:10px;line-height:1.5;overflow-wrap:anywhere}
+a{color:var(--accent2)}
+.stage{display:flex;flex-direction:column;min-width:0;padding:14px 16px;overflow:auto}
+.canvas-wrap{position:relative;background:#000;border-radius:8px;overflow:hidden;align-self:flex-start;width:100%;max-width:1280px}
+canvas{display:block;width:100%;height:auto;cursor:crosshair}
+.toolbar{display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap;max-width:1280px}
+.toolbar .time{font-family:var(--mono);font-size:13px;min-width:150px}
+input[type=range]{flex:1;min-width:200px;accent-color:var(--accent)}
+button.b{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:5px 10px;cursor:pointer;font-size:13px}
+button.b:hover{border-color:#4a5058} button.b.primary{background:var(--accent);color:#122008;border-color:var(--accent);font-weight:600}
+button.b.sel{outline:2px solid var(--accent2);outline-offset:1px}
+button.b.good{background:#1f3a2a;border-color:#2f6b47} button.b.bad{background:#3d1f1d;border-color:#7a3530}
+button.b.on.good{background:var(--ok);color:#0d1a12} button.b.on.bad{background:var(--bad);color:#fff} button.b.on.neutral{background:#6b7480}
+.caption{color:var(--muted);font-size:12.5px;margin-top:8px;max-width:1280px}
+aside{border-left:1px solid var(--line);padding:16px;overflow:auto;background:var(--panel)}
+aside h2{font-size:16px;margin:0 0 4px}
+aside h3{font-size:13px;margin:18px 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+aside p{margin:6px 0;color:#c9ced4}
+.why{background:var(--panel2);border-left:3px solid var(--accent2);padding:8px 10px;border-radius:4px;font-size:12.5px;color:#c9ced4;margin:10px 0}
+label.f{display:block;font-size:12px;color:var(--muted);margin:10px 0 3px}
+input[type=text],input[type=number],select,textarea{width:100%;background:#111316;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit}
+textarea{font-family:var(--mono);font-size:12px;min-height:90px}
+.row{display:flex;gap:8px;align-items:center} .row>*{flex:1}
+table.t{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+table.t td,table.t th{border-bottom:1px solid var(--line);padding:5px 4px;text-align:left;vertical-align:top}
+table.t th{color:var(--muted);font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:3px 6px;font-size:12px}
+.chip img{height:22px;image-rendering:pixelated;border-radius:2px}
+.chip .sw{width:14px;height:14px;border-radius:3px;border:1px solid #0006}
+.chip button{background:none;border:0;color:var(--muted);cursor:pointer;padding:0 2px}
+.status-ok{color:var(--ok)} .status-warn{color:var(--warn)} .status-missing{color:var(--bad)}
+.lm-list{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px}
+.lm{font-size:12px;padding:4px 6px;border-radius:5px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;display:flex;justify-content:space-between}
+.lm.sel{border-color:var(--accent2);background:#1f2d3a} .lm.set{border-color:#5d3a6e}
+.lm small{font-family:var(--mono);color:var(--muted)}
+svg.mini{width:100%;background:#1f5130;border-radius:6px;margin-top:6px}
+.kbd{font-family:var(--mono);font-size:11px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.list{max-height:330px;overflow:auto;border:1px solid var(--line);border-radius:6px}
+.item{padding:7px 9px;border-bottom:1px solid var(--line);cursor:pointer;font-size:12.5px;display:flex;gap:8px;align-items:center}
+.item:hover{background:var(--panel2)} .item.sel{background:#1f2d3a}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;background:#555}
+.dot.ok{background:var(--ok)} .dot.bad{background:var(--bad)} .dot.neutral{background:#7d8691}
+code.cmd{display:block;background:#0e1012;border:1px solid var(--line);padding:8px;border-radius:6px;font-size:11.5px;white-space:pre-wrap;word-break:break-all;margin:6px 0}
+.legend{display:flex;gap:12px;font-size:12px;color:var(--muted);margin-top:6px;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.busy{opacity:.6;pointer-events:none}
+@media (max-width:1100px){main{grid-template-columns:170px minmax(0,1fr);height:auto}aside{grid-column:1/-1;border-left:0;border-top:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Match setup</h1><span class="file" id="file"></span>
+  <span class="spacer"></span>
+  <span class="pill" id="checks"></span>
+  <span class="pill" id="saved">not saved yet</span>
+</header>
+<main>
+  <nav id="nav"></nav>
+  <section class="stage">
+    <div class="canvas-wrap"><canvas id="cv" width="1280" height="720"></canvas></div>
+    <div class="toolbar">
+      <button class="b" data-j="-10">−10 s</button><button class="b" data-j="-1">−1 s</button><button class="b" data-j="-0.2">−0.2</button>
+      <button class="b primary" id="play">Play</button>
+      <button class="b" data-j="0.2">+0.2</button><button class="b" data-j="1">+1 s</button><button class="b" data-j="10">+10 s</button>
+      <input type="range" id="scrub" min="0" max="1000" value="0">
+      <span class="time" id="time">0:00.0</span>
+      <input type="text" id="goto" placeholder="go to m:ss" style="width:92px">
+    </div>
+    <div class="caption" id="caption"></div>
+  </section>
+  <aside id="panel"></aside>
+</main>
+<script>
+"use strict";
+let S = null, setup = null, review = null;
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+let W = 640, H = 360, fps = 25, nFrames = 1, scale = 2;
+// grey margin around the frame (video px) so landmarks outside the picture can be placed (landmarks step)
+let PAD = { l: 0, t: 0, r: 0, b: 0 }, showOutside = false;
+const sx = (x) => (x + PAD.l) * scale, sy = (y) => (y + PAD.t) * scale;
+function setPad() {
+  const on = showOutside && step === "landmarks";
+  PAD = on ? { l: Math.round(0.12 * W), t: Math.round(0.06 * H), r: Math.round(0.12 * W), b: Math.round(0.45 * H) } : { l: 0, t: 0, r: 0, b: 0 };
+  const w = (W + PAD.l + PAD.r) * scale, h = (H + PAD.t + PAD.b) * scale;
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+}
+let frame = 0, img = null, loadToken = 0, playing = false, clip = null;
+let step = null, overlay = { det: [], fit: null, geo: null, drag: null };
+let selLm = null, kitClass = "team0", selCheck = 0, selEvent = null;
+const KIT_COL = { team0: "#4a90e2", team1: "#ef8a3c", gk0: "#9b6bff", gk1: "#ff5fa2", referee: "#111111" };
+const TEAM_COL = ["#4a90e2", "#ef8a3c"];
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = (t) => { t = Math.max(0, t); const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + s.toFixed(1).padStart(4, "0"); };
+const parseT = (s) => { s = String(s).trim(); if (!s) return null; const p = s.split(":").map(Number);
+  if (p.some(isNaN)) return null; return p.reduce((a, v) => a * 60 + v, 0); };
+const names = () => [setup.teams[0].name || "Team A", setup.teams[1].name || "Team B"];
+
+// ------------------------------------------------------------------ steps
+const SETUP_STEPS = [
+  ["match", "Match & pitch", ["video", "pitch size", "team names"]],
+  ["periods", "Periods & direction", ["periods", "attacking direction"]],
+  ["overlays", "Overlays", ["overlays"]],
+  ["kits", "Kits", ["kits: outfield", "kits: goalkeepers", "kits: referee"]],
+  ["landmarks", "Pitch landmarks", ["calibration"]],
+  ["sheet", "Match sheet", ["match sheet", "rosters"]],
+  ["check", "Checklist", []],
+];
+const REVIEW_STEPS = [["checks", "Frame checks", []], ["repair", "Camera repair", []], ["events", "Key events", []],
+  ["add", "Missing events", []], ["exclude", "Exclude stretches", []], ["summary", "Summary", []]];
+let clickMode = null, pendingAdd = {}, addForm = {}, repairPts = {}, repairFit = null;
+
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json(); if (j && j.error) { flash("Error: " + j.error, true); throw new Error(j.error); } return j;
+}
+function flash(msg, err) { const el = $("saved"); el.textContent = msg; el.className = "pill " + (err ? "err" : "ok"); }
+function mark(sec) { setup.provenance = setup.provenance || {}; setup.provenance[sec] = { source: "manual", updated: new Date().toISOString().slice(0, 19) }; }
+
+let saveTimer = null;
+function save(sec) {
+  if (sec) mark(sec);
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    if (S.mode === "review") {
+      const r = await api("/api/review", review); S.summary = r.summary;
+      flash("Saved " + new Date().toLocaleTimeString()); renderNav();
+    } else {
+      const r = await api("/api/setup", setup); S.checklist = r.checklist;
+      flash("Saved " + new Date().toLocaleTimeString()); renderNav();
+    }
+  }, 350);
+}
+
+let setupTimer = null;
+function saveSetup(sec) {           // review mode also edits the setup (excluded stretches)
+  if (sec) mark(sec);
+  clearTimeout(setupTimer);
+  setupTimer = setTimeout(async () => { await api("/api/setup", setup); flash("Saved " + new Date().toLocaleTimeString()); }, 300);
+}
+
+// ------------------------------------------------------------------ frames
+function seek(f) {
+  frame = Math.max(0, Math.min(nFrames - 1, Math.round(f)));
+  const t = frame / fps;
+  $("time").textContent = fmt(t) + "  ·  f" + frame;
+  $("scrub").value = Math.round(1000 * frame / Math.max(1, nFrames - 1));
+  const tok = ++loadToken, im = new Image();
+  im.onload = async () => {
+    if (tok !== loadToken) return;
+    img = im;
+    if (S.mode === "review") { try { overlay.geo = await api("/api/geometry?frame=" + frame); } catch (e) { overlay.geo = null; } }
+    if (step === "landmarks") overlay.fit = (overlay.fit && overlay.fit.frame === frame) ? overlay.fit : null;
+    if (step === "repair" && repairFit && repairFit.frame !== frame) repairFit = null;
+    if (step === "repair" || step === "exclude") renderPanel();
+    if (step === "kits" && overlay.det.frame !== frame) overlay.det = [];
+    draw();
+    if (playing) setTimeout(nextPlay, 60);
+  };
+  im.src = "/frame/" + frame + ".jpg";
+}
+const stepFrames = () => Math.max(1, Math.round(fps / (S.analysis_fps || 5)));
+function nextPlay() {
+  if (!playing) return;
+  if (clip) { let f = frame + stepFrames(); if (f > clip[1]) f = clip[0]; seek(f); }
+  else seek(frame + stepFrames());
+}
+function setPlay(on, c) { playing = on; clip = on ? (c || null) : null; $("play").textContent = on ? "Pause" : "Play"; if (on) nextPlay(); }
+$("play").onclick = () => setPlay(!playing);
+document.querySelectorAll("[data-j]").forEach((b) => (b.onclick = () => { setPlay(false); seek(frame + parseFloat(b.dataset.j) * fps); }));
+$("scrub").oninput = (e) => { setPlay(false); seek((e.target.value / 1000) * (nFrames - 1)); };
+$("goto").onchange = (e) => { const t = parseT(e.target.value); if (t !== null) { setPlay(false); seek(t * fps); } e.target.value = ""; };
+
+// ------------------------------------------------------------------ drawing
+function toV(e) { const r = cv.getBoundingClientRect(); return [((e.clientX - r.left) / r.width) * (cv.width / scale) - PAD.l, ((e.clientY - r.top) / r.height) * (cv.height / scale) - PAD.t]; }
+const clampV = (p) => step === "landmarks" ? p : p.map((v, i) => Math.max(0, Math.min(i ? H : W, v)));
+function line(x0, y0, x1, y1, col, w) { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(sx(x0), sy(y0)); ctx.lineTo(sx(x1), sy(y1)); ctx.stroke(); }
+function rect(b, col, w, fill) { const [x0, y0, x1, y1] = b; if (fill) { ctx.fillStyle = fill; ctx.fillRect(sx(x0), sy(y0), (x1 - x0) * scale, (y1 - y0) * scale); }
+  ctx.strokeStyle = col; ctx.lineWidth = w; ctx.strokeRect(sx(x0), sy(y0), (x1 - x0) * scale, (y1 - y0) * scale); }
+function label(x, y, txt, col) { const k = Math.max(1, cv.width / 1280), fs = Math.round((11 * scale / 2 + 6) * k);
+  ctx.font = "600 " + fs + "px -apple-system,Segoe UI,sans-serif"; const w = ctx.measureText(txt).width;
+  ctx.fillStyle = "#000a"; ctx.fillRect(sx(x) + 6 * k, sy(y) - fs - 4 * k, w + 8 * k, fs + 6 * k); ctx.fillStyle = col; ctx.fillText(txt, sx(x) + 10 * k, sy(y) - 3 * k); }
+function draw() {
+  if (!img) return;
+  setPad();
+  if (PAD.b || PAD.l) { ctx.fillStyle = "#2a2f35"; ctx.fillRect(0, 0, cv.width, cv.height);
+    const k = Math.max(1, cv.width / 1280); ctx.fillStyle = "#9aa1a9"; ctx.font = "600 " + Math.round(15 * k) + "px sans-serif";
+    ctx.fillText("outside the camera view — click where the landmark would be", sx(0) + 8 * k, sy(H) + 26 * k); }
+  ctx.drawImage(img, sx(0), sy(0), W * scale, H * scale);
+  if (PAD.b || PAD.l) { ctx.strokeStyle = "#fff8"; ctx.lineWidth = 1; ctx.strokeRect(sx(0), sy(0), W * scale, H * scale); }
+  const o = overlay;
+  if (step === "overlays" || step === "kits") {
+    (setup.overlays || []).forEach((r) => rect(r, "#e5594f", 2, "rgba(229,89,79,.25)"));
+    if (setup.scoreboard_roi) rect(setup.scoreboard_roi, "#f2d34a", 2, "rgba(242,211,74,.2)");
+  }
+  if (step === "kits") {
+    (o.det || []).forEach((d) => rect(d.box, "rgba(255,255,255,.85)", 1));
+    for (const c of S.kit_classes) (setup.kits[c] || []).filter((s) => s.frame === frame).forEach((s) => { rect(s.box, KIT_COL[c], 3); });
+  }
+  if (step === "landmarks") {
+    if (o.fit && o.fit.lines) o.fit.lines.forEach((l) => line(l[0], l[1], l[2], l[3], "rgba(80,230,255,.9)", 1.5));
+    const lf = curLmFrame();
+    if (lf) for (const [n, p] of Object.entries(lf.points)) {
+      const r = o.fit && o.fit.residuals ? o.fit.residuals[n] : null;
+      const col = r == null ? "#ff4fd8" : r < 3 ? "#4fbf7f" : r < 8 ? "#e3a73c" : "#e5594f";
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(sx(p[0]), sy(p[1]), 5, 0, 7); ctx.fill();
+      ctx.strokeStyle = "#000"; ctx.lineWidth = 1; ctx.stroke();
+      const off = p[0] < 0 || p[1] < 0 || p[0] > W || p[1] > H;
+      label(p[0], p[1], n + (off ? " (off-screen)" : "") + (r == null ? "" : "  " + r.toFixed(1) + " px"), col);
+    }
+  }
+  if (S.mode === "review" && o.geo) {
+    if (showLines) o.geo.lines.forEach((l) => line(l[0], l[1], l[2], l[3], "rgba(255,60,230,.85)", 1.2));
+    if (showBoxes) o.geo.boxes.forEach((b) => {
+      if (b.cls === "outside") return rect(b.box, "rgba(130,130,130,.6)", 1);
+      const col = b.cls === "referee" ? "#111" : (b.team === 0 || b.team === 1) ? TEAM_COL[b.team] : "#ddd";
+      rect(b.box, col, b.cls === "goalkeeper" ? 3.5 : 2);
+    });
+    if (o.geo.ball) { ctx.strokeStyle = "#ffe14d"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(sx(o.geo.ball[0]), sy(o.geo.ball[1]), 7, 0, 7); ctx.stroke(); }
+    if (!o.geo.exact) { ctx.fillStyle = "#000a"; ctx.fillRect(8, 8, 230, 22); ctx.fillStyle = "#ccc"; ctx.font = "12px sans-serif"; ctx.fillText("boxes from nearest analysed frame " + o.geo.frame, 14, 23); }
+    if (step === "events" && selEvent) { const ev = S.candidates.find((c) => c.key === selEvent); if (ev && Math.abs(frame / fps - ev.t) < 0.25) { ctx.fillStyle = "#ffe14d"; ctx.fillRect(0, 0, cv.width, 6); } }
+  }
+  if (step === "repair") {
+    if (repairFit && repairFit.lines) repairFit.lines.forEach((l) => line(l[0], l[1], l[2], l[3], "rgba(80,230,255,.95)", 1.5));
+    for (const [n, p] of Object.entries(repairPts[frame] || {})) {
+      const r = repairFit && repairFit.residuals ? repairFit.residuals[n] : null;
+      const col = r == null ? "#ff4fd8" : r < 3 ? "#4fbf7f" : r < 8 ? "#e3a73c" : "#e5594f";
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(sx(p[0]), sy(p[1]), 5, 0, 7); ctx.fill();
+      label(p[0], p[1], n + (r == null ? "" : "  " + r.toFixed(1) + " px"), col);
+    }
+  }
+  const mk = (uv, col, txt) => { const x = sx(uv[0]), y = sy(uv[1]); ctx.strokeStyle = col; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x - 9, y - 9); ctx.lineTo(x + 9, y + 9); ctx.moveTo(x + 9, y - 9); ctx.lineTo(x - 9, y + 9); ctx.stroke(); label(uv[0], uv[1], txt, col); };
+  if (step === "events" && selEvent) { const v = verdictOf(selEvent) || {};
+    if (v.shot_uv && v.shot_frame === frame) mk(v.shot_uv, "#ffe14d", "shot");
+    if (v.gk_uv && v.gk_frame === frame) mk(v.gk_uv, "#ff5fa2", "keeper"); }
+  if (step === "add") { if (pendingAdd.shot_uv && pendingAdd.shot_frame === frame) mk(pendingAdd.shot_uv, "#ffe14d", "shot");
+    if (pendingAdd.gk_uv && pendingAdd.gk_frame === frame) mk(pendingAdd.gk_uv, "#ff5fa2", "keeper"); }
+  const ex = (setup.exclusions || []).find((e) => frame / fps >= e.t0 && frame / fps <= e.t1);
+  if (ex) { ctx.fillStyle = "rgba(229,89,79,.85)"; ctx.fillRect(0, cv.height - 30, cv.width, 30); ctx.fillStyle = "#fff"; ctx.font = "600 15px sans-serif";
+    ctx.fillText("EXCLUDED: " + (ex.reason || ""), 12, cv.height - 10); }
+  if (clickMode) { ctx.fillStyle = "rgba(255,225,77,.95)"; ctx.fillRect(0, 0, cv.width, 30); ctx.fillStyle = "#111"; ctx.font = "600 15px sans-serif";
+    ctx.fillText(clickMode === "gk" ? "Click the goalkeeper's feet" : "Click where the ball was struck (shooter's feet)", 12, 21); }
+  if (o.drag) rect(o.drag, "#fff", 1.5, "rgba(255,255,255,.12)");
+}
+let showLines = true, showBoxes = true;
+
+// mouse: click or drag a rectangle
+cv.addEventListener("mousedown", (e) => { e.preventDefault(); overlay.drag0 = clampV(toV(e)); });
+window.addEventListener("mousemove", (e) => { if (!overlay.drag0) return; const p = clampV(toV(e)), q = overlay.drag0;
+  if (Math.hypot(p[0] - q[0], p[1] - q[1]) > 4 && (step === "overlays" || step === "kits")) { overlay.drag = [Math.min(p[0], q[0]), Math.min(p[1], q[1]), Math.max(p[0], q[0]), Math.max(p[1], q[1])]; draw(); } });
+window.addEventListener("mouseup", (e) => { if (!overlay.drag0) return; const q = overlay.drag0; overlay.drag0 = null;
+  if (overlay.drag) { const r = overlay.drag.map((v) => Math.round(v)); overlay.drag = null; onRect(r); draw(); }
+  else if (e.target === cv) onClick(toV(e)); });
+
+function onRect(r) {
+  if (step === "overlays") { setup.overlays.push(r); save("overlays"); renderPanel(); }
+  else if (step === "kits") addKit(r);
+}
+function onClick(p) {
+  if (step === "kits") {
+    const hits = (overlay.det || []).filter((d) => p[0] >= d.box[0] && p[0] <= d.box[2] && p[1] >= d.box[1] && p[1] <= d.box[3]);
+    if (!hits.length) { flash("Click inside a detected box, or drag a box around the player", true); return; }
+    hits.sort((a, b) => (a.box[2] - a.box[0]) * (a.box[3] - a.box[1]) - (b.box[2] - b.box[0]) * (b.box[3] - b.box[1]));
+    addKit(hits[0].box);
+  } else if (step === "landmarks") {
+    if (!selLm) { flash("Pick a landmark first (list or mini pitch)", true); return; }
+    let lf = curLmFrame();
+    if (!lf) { lf = { t: +(frame / fps).toFixed(3), frame, points: {} }; setup.calibration.landmark_frames.push(lf); }
+    lf.points[selLm] = [+p[0].toFixed(1), +p[1].toFixed(1)];
+    overlay.fit = null; save("calibration"); renderPanel(); draw();
+  } else if (step === "repair") {
+    if (!selLm) { flash("Pick a landmark first (list or mini pitch)", true); return; }
+    (repairPts[frame] = repairPts[frame] || {})[selLm] = [+p[0].toFixed(1), +p[1].toFixed(1)];
+    repairFit = null; renderPanel(); draw();
+  } else if ((step === "events" || step === "add") && clickMode) {
+    clickLocation(p);
+  }
+}
+async function clickLocation(p) {
+  const mode = clickMode; clickMode = null;
+  const r = await api("/api/to_pitch", { frame, uv: [p] });
+  const tgt = step === "events" ? upsertVerdict({}) : pendingAdd;
+  if (!tgt) return;
+  const k = mode === "gk" ? "gk" : "shot";
+  tgt[k + "_uv"] = [+p[0].toFixed(1), +p[1].toFixed(1)]; tgt[k + "_frame"] = frame;
+  tgt[k + "_xy"] = r.xy ? r.xy[0] : null; tgt[k + "_cam_ok"] = r.ok;
+  if (k === "shot") tgt.shot_frame = frame;
+  if (!r.xy) flash("No calibration at this frame: " + r.source, true);
+  else if (!r.ok) flash("Careful: the camera pose of this frame was rejected by the quality gate — check the magenta lines", true);
+  if (step === "events") save(); renderPanel(); draw();
+}
+
+// ------------------------------------------------------------------ nav + panel
+function stepsList() { return S.mode === "review" ? REVIEW_STEPS : SETUP_STEPS; }
+function stepStatus(items) {
+  if (!items.length || !S.checklist) return "";
+  const st = S.checklist.filter((c) => items.includes(c.item)).map((c) => c.status);
+  return st.includes("missing") ? "missing" : st.includes("warn") ? "warn" : st.length ? "ok" : "";
+}
+function renderNav() {
+  const n = $("nav"); n.innerHTML = "";
+  stepsList().forEach(([id, title, items], i) => {
+    const b = document.createElement("button"); const st = stepStatus(items);
+    b.className = (id === step ? "active " : "") + (st ? "st-" + st : "");
+    b.innerHTML = `<span class="n">${st === "ok" ? "✓" : st === "missing" ? "!" : i + 1}</span>${title}`;
+    b.onclick = () => go(id); n.appendChild(b);
+  });
+  const hint = document.createElement("div"); hint.className = "hint";
+  hint.innerHTML = S.mode === "review"
+    ? `Keys: <span class="kbd">space</span> play · <span class="kbd">←</span><span class="kbd">→</span> step · frame checks <span class="kbd">g</span>/<span class="kbd">b</span>/<span class="kbd">n</span> lines, <span class="kbd">1</span>/<span class="kbd">2</span> teams · events <span class="kbd">c</span> confirm <span class="kbd">x</span> reject <span class="kbd">t</span> flip team`
+    : `Everything is saved as you go to<br><span style="font-family:var(--mono)">${esc(S.setup_path)}</span><br><br>Keys: <span class="kbd">space</span> play · <span class="kbd">←</span><span class="kbd">→</span> 0.2 s · <span class="kbd">shift</span>+arrows 1 s`;
+  n.appendChild(hint);
+  if (S.mode === "review") { const [d, n] = checkCounts(); $("checks").textContent = `${d}/${n} frames · ${review.events.filter((e) => e.verdict).length}/${S.candidates.length} events reviewed`; }
+  else if (S.checklist) { const c = S.checklist; const ok = c.filter((x) => x.status === "ok").length; $("checks").textContent = `${ok}/${c.length} checks ok`; }
+}
+function go(id) { step = id; overlay.fit = null; renderNav(); renderPanel(); draw(); }
+
+const P = {};  // panel renderers
+const STEP_SECTIONS = { match: ["teams", "pitch"], periods: ["periods", "direction"], overlays: ["overlays"], kits: ["kits"],
+  landmarks: ["calibration"], sheet: ["match_sheet"] };
+async function renderPanel() {
+  $("panel").innerHTML = ""; await (P[step] || (() => ""))();
+  if (S.mode !== "setup") return;
+  const pre = (STEP_SECTIONS[step] || []).filter((k) => setup.provenance && setup.provenance[k] && setup.provenance[k].source === "assistant");
+  if (!pre.length) return;
+  const d = document.createElement("div"); d.className = "why"; d.style.borderLeftColor = "#9b7cf0";
+  d.innerHTML = `<b>Pre-filled, not yet confirmed:</b> ${pre.map((k) => `<div style="margin-top:4px"><i>${esc(k)}</i> — ${esc(setup.provenance[k].note || "")}</div>`).join("")}
+    <div style="margin-top:8px"><button class="b primary" id="confirmpre">I checked this — mark as validated</button></div>`;
+  $("panel").prepend(d);
+  bind("confirmpre", "onclick", () => { pre.forEach((k) => mark(k)); save(); renderPanel(); });
+}
+function html(s) { $("panel").innerHTML = s; }
+function bind(id, ev, fn) { const el = $(id); if (el) el[ev] = fn; }
+
+P.match = () => {
+  const pc = setup.pitch, nm = names();
+  html(`<h2>Match & pitch</h2>
+  <p>Facts you know better than the camera. They feed every statistic.</p>
+  <label class="f">Team A (team index 0)</label><input type="text" id="n0" value="${esc(nm[0])}">
+  <label class="f">Team B (team index 1)</label><input type="text" id="n1" value="${esc(nm[1])}">
+  <div class="row"><div><label class="f">Date</label><input type="text" id="date" placeholder="2026-10-18" value="${esc(setup.match.date || "")}"></div>
+  <div><label class="f">Competition</label><input type="text" id="comp" value="${esc(setup.match.competition || "")}"></div></div>
+  <label class="f">Venue</label><input type="text" id="venue" value="${esc(setup.match.venue || "")}">
+  <h3>Pitch size</h3>
+  <div class="row"><div><label class="f">Length (m)</label><input type="number" step="0.1" id="pl" value="${pc.length}"></div>
+  <div><label class="f">Width (m)</label><input type="number" step="0.1" id="pw" value="${pc.width}"></div></div>
+  <label class="f">Where does it come from?</label>
+  <select id="psrc"><option value="manual">measured / official (club, federation, satellite map)</option>
+  <option value="estimated">estimated by the camera calibration</option><option value="default">unknown (default 105 × 68)</option></select>
+  <label class="f">Note</label><input type="text" id="pnote" value="${esc(pc.note || "")}" placeholder="e.g. Google Maps measure, club website">
+  <label class="f">Near touchline (camera side) — is it in the picture?</label>
+  <select id="pnear"><option value="visible">yes, the whole width of the pitch is visible</option>
+  <option value="partly">only sometimes (camera tilts / zooms)</option><option value="hidden">no, the picture ends before the near touchline</option></select>
+  <div class="why" style="border-left-color:#e3a73c">When the near touchline is out of the picture the system still uses the
+  <b>full pitch size above</b> — the pitch simply continues below the frame. In <i>Pitch landmarks</i> tick
+  "Show the area outside the picture" to place near-side landmarks in the margin. During processing every frame records
+  where the view ends: a ball that leaves the picture there is treated as a near-side throw-in (not a foul / injury
+  stoppage), and players cut by the bottom edge get their feet estimated below the frame.</div>
+  <div class="why"><b>Why manual:</b> lower-league pitches are rarely 105 × 68 (the Canedo camera estimate wandered between 52 and 62 m wide).
+  A wrong size moves every position near the touchlines and changes shot distances / angles, hence xG. Measure it once per ground on a satellite map (distance tool) if the club does not publish it.</div>`);
+  $("psrc").value = pc.source || "default";
+  $("pnear").value = pc.near_touchline || "visible";
+  const upd = () => { setup.teams[0].name = $("n0").value.trim(); setup.teams[1].name = $("n1").value.trim();
+    setup.match.date = $("date").value.trim() || null; setup.match.competition = $("comp").value.trim() || null; setup.match.venue = $("venue").value.trim() || null; save("teams"); };
+  ["n0", "n1", "date", "comp", "venue"].forEach((i) => bind(i, "onchange", upd));
+  const updP = () => { pc.length = parseFloat($("pl").value); pc.width = parseFloat($("pw").value); pc.source = $("psrc").value; pc.note = $("pnote").value;
+    pc.near_touchline = $("pnear").value; if (pc.near_touchline !== "visible") { showOutside = true; try { localStorage.setItem("fve_outside", "1"); } catch (e) { /* ignore */ } } save("pitch"); };
+  ["pl", "pw", "psrc", "pnote", "pnear"].forEach((i) => bind(i, "onchange", updP));
+};
+
+P.periods = () => {
+  const per = setup.periods;
+  while (per.length < 2) per.push({ start: null, end: null });
+  const nm = names(), d = setup.attacks_right_first_half;
+  html(`<h2>Periods & direction</h2>
+  <p>Scrub to each moment and press <i>set</i>. Warm-up and half-time are then excluded from every statistic and the clock is exact.</p>
+  <table class="t"><tr><th></th><th>kick-off</th><th>final whistle</th></tr>
+  ${per.map((p, i) => `<tr><td>${i + 1}${i === 0 ? "st" : i === 1 ? "nd" : "th"} half</td>
+   <td><button class="b" data-set="${i}:start">set</button> <a href="#" data-go="${p.start}">${p.start == null ? "—" : fmt(p.start)}</a></td>
+   <td><button class="b" data-set="${i}:end">set</button> <a href="#" data-go="${p.end}">${p.end == null ? "—" : fmt(p.end)}</a></td></tr>`).join("")}
+  </table>
+  <h3>Direction of play</h3>
+  <p>In the <b>1st half</b>, which team attacks the goal on the <b>right</b> of the camera image?</p>
+  <div class="row"><button class="b ${d === 0 ? "sel" : ""}" id="d0">${esc(nm[0])}</button><button class="b ${d === 1 ? "sel" : ""}" id="d1">${esc(nm[1])}</button><button class="b" id="dn">not sure</button></div>
+  <div class="why"><b>Why manual:</b> the automatic guess uses where each team stands on average. Warm-up, a half-time
+  break inside the file or a team pressing high can fool it — and if the direction is wrong, shots, final-third entries,
+  PPDA and field tilt are all mirrored. Tip: at the kick-off, look which half each team lines up in.</div>`);
+  document.querySelectorAll("[data-set]").forEach((b) => (b.onclick = () => { const [i, k] = b.dataset.set.split(":"); per[+i][k] = +(frame / fps).toFixed(2); save("periods"); renderPanel(); }));
+  document.querySelectorAll("[data-go]").forEach((a) => (a.onclick = (e) => { e.preventDefault(); if (a.dataset.go !== "null") seek(parseFloat(a.dataset.go) * fps); }));
+  bind("d0", "onclick", () => { setup.attacks_right_first_half = 0; save("direction"); renderPanel(); });
+  bind("d1", "onclick", () => { setup.attacks_right_first_half = 1; save("direction"); renderPanel(); });
+  bind("dn", "onclick", () => { setup.attacks_right_first_half = null; save("direction"); renderPanel(); });
+};
+
+P.overlays = () => {
+  const ov = setup.overlays;
+  html(`<h2>Overlays</h2>
+  <p><b>Drag a rectangle</b> on the frame over every logo, clock or score bug burnt into the video.</p>
+  <table class="t"><tr><th>#</th><th>x0, y0, x1, y1</th><th></th><th></th></tr>
+  ${ov.map((r, i) => `<tr><td>${i + 1}</td><td style="font-family:var(--mono)">${r.join(", ")}</td>
+   <td><button class="b" data-sb="${i}">${setup.scoreboard_roi && setup.scoreboard_roi.join() === r.join() ? "score bug ✓" : "is score bug"}</button></td>
+   <td><button class="b" data-del="${i}">delete</button></td></tr>`).join("") || "<tr><td colspan=4>none yet</td></tr>"}</table>
+  <label style="display:flex;gap:8px;margin-top:12px;align-items:center"><input type="checkbox" id="conf" ${setup.overlays_confirmed ? "checked" : ""}> No other overlays in this video</label>
+  <div class="why"><b>Why manual:</b> a logo is a static, high-contrast blob: the detector sees "people" in it and the
+  pitch-line finder sees "lines". Marking it takes seconds. A score bug, if present, also gives exact goal times
+  (the system watches it for changes).</div>`);
+  document.querySelectorAll("[data-del]").forEach((b) => (b.onclick = () => { const r = ov.splice(+b.dataset.del, 1)[0];
+    if (setup.scoreboard_roi && r.join() === setup.scoreboard_roi.join()) setup.scoreboard_roi = null; save("overlays"); renderPanel(); draw(); }));
+  document.querySelectorAll("[data-sb]").forEach((b) => (b.onclick = () => { setup.scoreboard_roi = ov[+b.dataset.sb]; save("overlays"); renderPanel(); draw(); }));
+  bind("conf", "onchange", (e) => { setup.overlays_confirmed = e.target.checked; save("overlays"); });
+};
+
+P.kits = () => {
+  const nm = names(), lbl = { team0: nm[0] + " — outfield", team1: nm[1] + " — outfield", gk0: nm[0] + " — goalkeeper", gk1: nm[1] + " — goalkeeper", referee: "Referee" };
+  html(`<h2>Kits</h2>
+  <p>1 · <button class="b primary" id="det">Detect players on this frame</button></p>
+  <p>2 · Choose who you will click:</p>
+  <div class="chips">${S.kit_classes.map((c) => `<button class="b ${c === kitClass ? "sel" : ""}" data-k="${c}"><span class="sw" style="display:inline-block;width:10px;height:10px;background:${KIT_COL[c]};border-radius:2px;margin-right:5px"></span>${esc(lbl[c])}</button>`).join("")}</div>
+  <p>3 · Click inside a player's box (or drag a box around a player the detector missed).</p>
+  ${S.kit_classes.map((c) => `<h3>${esc(lbl[c])} · ${(setup.kits[c] || []).length}</h3><div class="chips">${(setup.kits[c] || []).map((s, i) =>
+    `<span class="chip"><img src="${s.thumb || ""}"><span class="sw" style="background:${s.rgb}"></span><a href="#" data-goto="${s.frame}">${fmt(s.t)}</a><button data-rm="${c}:${i}">✕</button></span>`).join("") || '<span style="color:var(--muted);font-size:12px">none</span>'}</div>`).join("")}
+  <div class="why"><b>Why manual:</b> without samples the system clusters shirt colours on its own: the two clusters come
+  out in an arbitrary order (a swap attributes <i>every</i> statistic to the wrong team), and goalkeepers / referee are
+  guessed. With 3+ clicks per kit — some in sunlight, some in shade, from both halves — the clusters are seeded with
+  your labels and can never swap; goalkeepers and referee are recognised by their own kit.</div>`);
+  bind("det", "onclick", async () => { $("panel").classList.add("busy");
+    try { overlay.det = await api("/api/detect?frame=" + frame); overlay.det.frame = frame; flash(overlay.det.length + " people detected"); } finally { $("panel").classList.remove("busy"); } draw(); });
+  document.querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => { kitClass = b.dataset.k; renderPanel(); }));
+  document.querySelectorAll("[data-rm]").forEach((b) => (b.onclick = () => { const [c, i] = b.dataset.rm.split(":"); setup.kits[c].splice(+i, 1); save("kits"); renderPanel(); draw(); }));
+  document.querySelectorAll("[data-goto]").forEach((a) => (a.onclick = (e) => { e.preventDefault(); seek(+a.dataset.goto); }));
+};
+async function addKit(box) {
+  const s = await api("/api/kit_sample", { frame, box });
+  const dup = (setup.kits[kitClass] || []).some((k) => k.frame === s.frame && k.box.join() === s.box.join());
+  if (dup) { flash("This player is already a sample", true); return; }
+  (setup.kits[kitClass] = setup.kits[kitClass] || []).push(s); save("kits"); renderPanel(); draw();
+  if (s.drawn) flash("Box snapped to the detected player (a tight box gives a clean shirt colour)");
+}
+
+function curLmFrame() { return (setup.calibration.landmark_frames || []).find((f) => f.frame === frame || Math.abs(f.t * fps - frame) < 0.5); }
+P.landmarks = () => {
+  const cal = setup.calibration; cal.landmark_frames = cal.landmark_frames || [];
+  const lf = curLmFrame(), pts = lf ? lf.points : {};
+  const groups = [["Halfway & centre", ["halfway_top", "circle_top", "centre", "circle_bottom", "halfway_bottom", "circle_left", "circle_right"]],
+    ["Left goal (as seen)", ["post_l_top", "post_l_bottom", "ga_l_top_line", "ga_l_bottom_line", "ga_l_top", "ga_l_bottom", "pa_l_top_line", "pa_l_bottom_line", "pa_l_top", "pa_l_bottom", "spot_l"]],
+    ["Right goal (as seen)", ["post_r_top", "post_r_bottom", "ga_r_top_line", "ga_r_bottom_line", "ga_r_top", "ga_r_bottom", "pa_r_top_line", "pa_r_bottom_line", "pa_r_top", "pa_r_bottom", "spot_r"]],
+    ["Corners", ["corner_tl", "corner_tr", "corner_bl", "corner_br"]]];
+  const fit = overlay.fit;
+  html(`<h2>Pitch landmarks</h2>
+  <div class="row"><div><label class="f">Camera type</label><select id="mode">
+    <option value="static">fixed camera (tripod, no pan)</option><option value="ptz">pan / tilt / zoom from one spot</option><option value="flow">panning camera, no venue model</option></select></div></div>
+  ${cal.mode === "ptz" ? `<label class="f">Venue camera file (from calibrate_ptz.py)</label><input type="text" id="camf" value="${esc(cal.camera_file || "")}" placeholder="configs/camera_myvenue_ptz.json">` : ""}
+  <p style="margin-top:12px">Pick a landmark, then click exactly where it is on the frame (where the painted lines meet; goal posts at the grass).
+  ${cal.mode === "static" ? "Static camera: 6-10 well spread points on one frame." : "Moving camera: a few frames with 2-6 points each (centre circle, goal posts, box corners)."}</p>
+  <label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="outside" ${showOutside ? "checked" : ""}> Show the area outside the picture</label>
+  ${showOutside || (setup.pitch.near_touchline && setup.pitch.near_touchline !== "visible") ? `<div class="why" style="border-left-color:#e3a73c"><b>Pitch continues beyond the picture?</b>
+  The grey margin around the frame is the pitch the camera does not show. Follow the painted lines you can see and click
+  where a landmark <i>would</i> be (e.g. <code>halfway_bottom</code>, <code>pa_l_bottom</code>, a near corner) — points
+  in the margin are marked "off-screen". After <i>Fit</i>, the cyan model continues into the margin: the near touchline must
+  run there, not inside the picture.${fit && fit.near_check ? `<div style="margin-top:6px"><b>${esc(fit.near_check)}</b></div>` : ""}</div>` : ""}
+  <svg class="mini" id="mini" viewBox="-4 -4 ${S.pitch_size[0] + 8} ${S.pitch_size[1] + 8}"></svg>
+  ${groups.map(([g, ns]) => `<h3>${g}</h3><div class="lm-list">${ns.filter((n) => S.landmarks[n]).map((n) =>
+    `<div class="lm ${n === selLm ? "sel" : ""} ${pts[n] ? "set" : ""}" data-lm="${n}"><span>${n}</span><small>${pts[n] ? (fit && fit.residuals && fit.residuals[n] != null ? fit.residuals[n].toFixed(1) + "px" : "✓") : ""}</small></div>`).join("")}</div>`).join("")}
+  <div class="row" style="margin-top:12px"><button class="b primary" id="fit">Fit & preview on this frame</button>
+  ${selLm && pts[selLm] ? `<button class="b" id="rmpt">remove ${esc(selLm)}</button>` : ""}</div>
+  ${fit ? `<div class="why">${fit.method ? `<b>${fit.method === "ptz" ? "Venue camera pose" : "Homography"}</b> from ${fit.n} points: mean error <b>${fit.mean_err} px</b>, max ${fit.max_err} px${fit.line_err != null ? `; line alignment ${fit.line_err.toFixed(1)} px` : ""}.
+     The cyan lines are the pitch model projected with this calibration — they must sit on the painted lines.
+     Points are coloured by their own error (<3 px green, <8 amber, else red: probably clicked the wrong landmark).` : esc(fit.message)}
+     ${fit.method === "ptz" ? `<div style="margin-top:8px"><button class="b" id="anchor">Use this pose as a camera anchor</button></div>` : ""}</div>` : ""}
+  <h3>Landmark frames</h3>
+  <table class="t"><tr><th>time</th><th>points</th><th></th></tr>${cal.landmark_frames.map((f, i) => `<tr><td><a href="#" data-gf="${f.frame}">${fmt(f.t)}</a></td><td>${Object.keys(f.points).length}</td><td><button class="b" data-dlf="${i}">delete</button></td></tr>`).join("") || "<tr><td colspan=3>none</td></tr>"}</table>
+  ${Object.keys(cal.anchors || {}).length ? `<p style="font-size:12px;color:var(--muted)">${Object.keys(cal.anchors).length} validated camera anchor(s)</p>` : ""}
+  <div class="why"><b>Why manual:</b> every position in metres comes from this calibration, and a wrong one fails <i>silently</i>
+  (players just end up in the wrong place). Clicking a handful of landmarks and checking the overlay is the single best
+  protection. ${cal.mode === "ptz" ? "For a panning camera, run <code>scripts/calibrate_ptz.py --setup " + esc(S.setup_path) + "</code> once per venue to solve the camera from these clicks with the pitch size above." : ""}</div>`);
+  $("mode").value = cal.mode || "static";
+  bind("mode", "onchange", (e) => { cal.mode = e.target.value; save("calibration"); renderPanel(); });
+  bind("camf", "onchange", (e) => { cal.camera_file = e.target.value.trim() || null; save("calibration"); });
+  document.querySelectorAll("[data-lm]").forEach((d) => (d.onclick = () => { selLm = d.dataset.lm; renderPanel(); }));
+  document.querySelectorAll("[data-gf]").forEach((a) => (a.onclick = (e) => { e.preventDefault(); seek(+a.dataset.gf); setTimeout(renderPanel, 50); }));
+  document.querySelectorAll("[data-dlf]").forEach((b) => (b.onclick = () => { cal.landmark_frames.splice(+b.dataset.dlf, 1); save("calibration"); renderPanel(); draw(); }));
+  bind("rmpt", "onclick", () => { delete pts[selLm]; if (lf && !Object.keys(lf.points).length) cal.landmark_frames.splice(cal.landmark_frames.indexOf(lf), 1); overlay.fit = null; save("calibration"); renderPanel(); draw(); });
+  bind("fit", "onclick", async () => { if (!lf) { flash("No landmarks on this frame", true); return; } $("panel").classList.add("busy"); flash("fitting…");
+    try { overlay.fit = await api("/api/fit", { frame, points: lf.points, pad: Math.max(PAD.l, PAD.b, PAD.r, PAD.t, 40) }); overlay.fit.frame = frame; flash("fitted"); } finally { $("panel").classList.remove("busy"); } renderPanel(); draw(); });
+  bind("outside", "onchange", (e) => { showOutside = e.target.checked; try { localStorage.setItem("fve_outside", showOutside ? "1" : "0"); } catch (err) { /* private mode */ } overlay.fit = null; renderPanel(); draw(); });
+  bind("anchor", "onclick", () => { cal.anchors = cal.anchors || {}; cal.anchors[String(frame)] = overlay.fit.pose; save("calibration"); renderPanel(); });
+  // mini pitch
+  const svg = $("mini"); let s = "";
+  S.pitch_lines.forEach((l) => { s += `<polyline fill="none" stroke="#e8f5e9" stroke-width="0.35" points="${l.map((p) => p.join(",")).join(" ")}"/>`; });
+  for (const [n, p] of Object.entries(S.landmarks)) s += `<circle data-lm="${n}" cx="${p[0]}" cy="${p[1]}" r="${n === selLm ? 2.2 : 1.4}" fill="${pts[n] ? "#ff4fd8" : n === selLm ? "#5fb3f0" : "#ffffff"}" stroke="#0008" stroke-width=".3" style="cursor:pointer"><title>${n}</title></circle>`;
+  s += `<text x="${S.pitch_size[0] / 2}" y="${S.pitch_size[1] + 3.2}" fill="#cfe8d2" font-size="2.6" text-anchor="middle">near touchline (camera side)</text>`;
+  svg.innerHTML = s;
+  svg.querySelectorAll("[data-lm]").forEach((c) => (c.onclick = () => { selLm = c.dataset.lm; renderPanel(); }));
+};
+
+P.sheet = () => {
+  const nm = names(), fs = setup.final_score || [null, null];
+  const ev = setup.known_events;
+  const types = ["goal", "penalty_goal", "own_goal", "yellow", "red", "sub", "penalty_missed", "note"];
+  html(`<h2>Match sheet</h2>
+  <p>What the referee's report (ficha de jogo) says. The system will confirm or reject its own goals against it.</p>
+  <div class="row"><div><label class="f">${esc(nm[0])}</label><input type="number" min="0" id="s0" value="${fs[0] ?? ""}"></div>
+  <div><label class="f">${esc(nm[1])}</label><input type="number" min="0" id="s1" value="${fs[1] ?? ""}"></div></div>
+  <h3>Events</h3>
+  <table class="t"><tr><th>type</th><th>min.</th><th>team</th><th>#</th><th></th></tr>
+  ${ev.map((e, i) => `<tr><td><select data-ev="${i}:type">${types.map((t) => `<option ${t === e.type ? "selected" : ""}>${t}</option>`).join("")}</select></td>
+   <td><input type="text" data-ev="${i}:minute" value="${esc(e.minute ?? "")}" placeholder="45+2" style="width:58px"></td>
+   <td><select data-ev="${i}:team"><option value="0" ${e.team == 0 ? "selected" : ""}>${esc(nm[0])}</option><option value="1" ${e.team == 1 ? "selected" : ""}>${esc(nm[1])}</option></select></td>
+   <td><input type="number" data-ev="${i}:number" value="${e.number ?? ""}" style="width:52px"></td>
+   <td><button class="b" data-tnow="${i}" title="use the current video time instead of the minute">${e.t != null ? fmt(e.t) : "now"}</button> <button class="b" data-del="${i}">✕</button></td></tr>`).join("")}
+  </table>
+  <div class="row" style="margin-top:8px"><button class="b" id="addev">+ add event</button></div>
+  <p style="font-size:12px;color:var(--muted)">Minute = referee's clock (1-45+, 46-90+). <i>now</i> stores the exact video time instead (more precise for matching). For goals, team = the team credited with the goal.</p>
+  <h3>Rosters (optional)</h3>
+  <p style="font-size:12px;color:var(--muted)">One player per line: <span style="font-family:var(--mono)">number name</span> — shirt numbers typed in the review then show names.</p>
+  <div class="row"><div><label class="f">${esc(nm[0])}</label><textarea id="r0">${setup.teams[0].roster.map((p) => p.number + " " + p.name).join("\n")}</textarea></div>
+  <div><label class="f">${esc(nm[1])}</label><textarea id="r1">${setup.teams[1].roster.map((p) => p.number + " " + p.name).join("\n")}</textarea></div></div>
+  <div class="why"><b>Why manual:</b> this stream has no score overlay and no audio, so goals can only be <i>inferred</i>
+  (a long stoppage followed by a kick-off) — a long injury break can look the same. The final score and the goal minutes
+  turn that guess into a check. Cards and substitutions cannot be seen from one wide camera at all.
+  Shirt numbers are unreadable at this resolution (players are ~25 px tall), so names come from you, not from the video.</div>`);
+  const updS = () => { const a = $("s0").value, b = $("s1").value; setup.final_score = a === "" || b === "" ? null : [+a, +b]; save("match_sheet"); };
+  bind("s0", "onchange", updS); bind("s1", "onchange", updS);
+  document.querySelectorAll("[data-ev]").forEach((el) => (el.onchange = () => { const [i, k] = el.dataset.ev.split(":"); let v = el.value;
+    if (k === "team") v = +v; if (k === "number") v = v === "" ? null : +v; ev[+i][k] = v; save("match_sheet"); }));
+  document.querySelectorAll("[data-tnow]").forEach((b) => (b.onclick = () => { const e = ev[+b.dataset.tnow]; e.t = e.t != null ? null : +(frame / fps).toFixed(2); save("match_sheet"); renderPanel(); }));
+  document.querySelectorAll("[data-del]").forEach((b) => (b.onclick = () => { ev.splice(+b.dataset.del, 1); save("match_sheet"); renderPanel(); }));
+  bind("addev", "onclick", () => { ev.push({ type: "goal", minute: "", team: 0, number: null, t: null, note: "" }); save("match_sheet"); renderPanel(); });
+  const updR = (i) => () => { setup.teams[i].roster = $("r" + i).value.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => {
+    const m = l.match(/^(\d+)\s+(.*)$/); return m ? { number: +m[1], name: m[2].trim() } : null; }).filter(Boolean); save("teams"); };
+  bind("r0", "onchange", updR(0)); bind("r1", "onchange", updR(1));
+};
+
+P.check = async () => {
+  const c = await api("/api/checklist"); S.checklist = c; renderNav();
+  const vid = setup.video.path, sp = S.setup_path, cfg = S.config ? " --config " + S.config : "";
+  const block = c.filter((x) => x.blocking);
+  const ptzNoCam = setup.calibration.mode === "ptz" && !setup.calibration.camera_file;
+  html(`<h2>Checklist</h2>
+  <p>What the pipeline will use, and what is still guessed.</p>
+  <table class="t"><tr><th></th><th>item</th><th>value</th></tr>${c.map((x) => `<tr><td class="status-${x.status}">${x.status === "ok" ? "✓" : x.status === "warn" ? "!" : "✗"}</td><td>${esc(x.item)}</td><td>${esc(x.detail)}${x.status !== "ok" ? `<br><span style="color:var(--muted)">→ ${esc(x.impact)}</span>` : ""}</td></tr>`).join("")}</table>
+  <h3>Next</h3>
+  ${ptzNoCam ? `<p>Solve the venue camera from your clicks (once per ground):</p><code class="cmd">python scripts/calibrate_ptz.py --video ${esc(vid)} --setup ${esc(sp)}${esc(cfg)} --out configs/camera_${esc((setup.match.venue || "venue").toLowerCase().replace(/\W+/g, "_"))}_ptz.json</code>` : ""}
+  <p>${block.length ? `<span class="status-missing">Blocking: ${block.map((b) => esc(b.item)).join(", ")}</span>` : "Process the match:"}</p>
+  <code class="cmd">python run_analysis.py --video ${esc(vid)}${esc(cfg)} --setup ${esc(sp)} --out outputs/${esc((vid || "match").split("/").pop().replace(/\.\w+$/, ""))}</code>
+  <p>Afterwards, check a few frames and the key events:</p>
+  <code class="cmd">python scripts/match_ui.py review --run outputs/${esc((vid || "match").split("/").pop().replace(/\.\w+$/, ""))} --setup ${esc(sp)}${esc(cfg)}</code>`);
+};
+
+// ------------------------------------------------------------------ review panels
+function checkCounts() { const fc = review.frame_checks; return [fc.filter((c) => c.lines).length, fc.length]; }
+P.checks = () => {
+  const fc = review.frame_checks, c = fc[selCheck] || null;
+  const btn = (k, v, txt, cls) => `<button class="b ${cls} ${c && c[k] === v ? "on" : ""}" data-v="${k}:${v}">${txt}</button>`;
+  const [done, n] = checkCounts();
+  html(`<h2>Frame checks <span style="color:var(--muted);font-weight:400;font-size:13px">${done}/${n}</span></h2>
+  <p>${n} frames sampled across the match (most among the frames the system <b>used</b>, a few it <b>discarded</b>). For each: do the
+  <span style="color:#ff3ce6">magenta lines</span> sit on the painted lines, and are the box colours the right teams?</p>
+  <div class="legend"><span><i style="background:${TEAM_COL[0]}"></i>${esc(S.team_names[0])}</span><span><i style="background:${TEAM_COL[1]}"></i>${esc(S.team_names[1])}</span><span><i style="background:#111;border:1px solid #666"></i>referee</span><span><i style="background:#ddd"></i>unknown</span><span><i style="background:#888"></i>off pitch</span><span>thick = goalkeeper</span></div>
+  ${c ? `<h3>Frame ${selCheck + 1} · ${fmt(c.t)} · ${c.auto_ok ? "used by the stats" : "discarded by the quality gate"}</h3>
+  <label class="f">Pitch lines</label><div class="row">${btn("lines", "good", "on the lines (g)", "good")}${btn("lines", "bad", "off (b)", "bad")}${btn("lines", "no_lines", "can't tell (n)", "neutral")}</div>
+  <label class="f">Team colours</label><div class="row">${btn("teams", "good", "all right (1)", "good")}${btn("teams", "bad", "some wrong (2)", "bad")}</div>
+  <label class="f">Note</label><input type="text" id="note" value="${esc(c.note || "")}">
+  <div class="row" style="margin-top:8px"><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="sl" ${showLines ? "checked" : ""}>lines</label><label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="sbx" ${showBoxes ? "checked" : ""}>boxes</label></div>` : ""}
+  <h3>All frames</h3><div class="list">${fc.map((x, i) => `<div class="item ${i === selCheck ? "sel" : ""}" data-i="${i}"><span class="dot ${x.lines === "good" ? "ok" : x.lines === "bad" ? "bad" : x.lines ? "neutral" : ""}"></span>
+    <span style="font-family:var(--mono)">${fmt(x.t)}</span><span style="color:var(--muted)">${x.auto_ok ? "used" : "discarded"}</span><span style="margin-left:auto">${x.teams === "good" ? "teams ✓" : x.teams === "bad" ? "teams ✗" : ""}</span></div>`).join("")}</div>
+  <div class="why"><b>Why:</b> the system grades its own camera calibration with a line-alignment error. Your yes/no answers
+  measure how often that grade is right on <i>this</i> video, so the report can say "positions correct on 11/12 checked frames
+  (95 % CI 65-99 %)" instead of assuming it.</div>`);
+  document.querySelectorAll("[data-i]").forEach((d) => (d.onclick = () => selectCheck(+d.dataset.i)));
+  document.querySelectorAll("[data-v]").forEach((b) => (b.onclick = () => { const [k, v] = b.dataset.v.split(":"); setCheck(k, v); }));
+  bind("note", "onchange", (e) => { c.note = e.target.value; save(); });
+  bind("sl", "onchange", (e) => { showLines = e.target.checked; draw(); });
+  bind("sbx", "onchange", (e) => { showBoxes = e.target.checked; draw(); });
+};
+function selectCheck(i) { selCheck = Math.max(0, Math.min(review.frame_checks.length - 1, i)); setPlay(false); seek(review.frame_checks[selCheck].frame); renderPanel(); }
+function setCheck(k, v) { const c = review.frame_checks[selCheck]; c[k] = c[k] === v ? null : v; save();
+  if (c.lines && c.teams && selCheck < review.frame_checks.length - 1) selectCheck(selCheck + 1); else renderPanel(); }
+
+function verdictOf(key) { return review.events.find((e) => e.key === key); }
+P.events = () => {
+  const cands = S.candidates, nm = S.team_names;
+  const ev = cands.find((c) => c.key === selEvent);
+  const v = ev ? verdictOf(ev.key) || {} : {};
+  const tn = (t) => (t === 0 || t === 1 ? nm[t] : "?");
+  const btn = (val, txt, cls) => `<button class="b ${cls} ${v.verdict === val ? "on" : ""}" data-verdict="${val}">${txt}</button>`;
+  html(`<h2>Key events <span style="color:var(--muted);font-weight:400;font-size:13px">${review.events.filter((e) => e.verdict).length}/${cands.length}</span></h2>
+  <p>Goals, penalties and shots found by the rules. Watch the clip (4 s before → 3 s after) and judge.</p>
+  ${ev ? `<h3>${esc(ev.type)} · ${esc(tn(ev.team))} · ${fmt(ev.t)}</h3>
+   <div class="row"><button class="b primary" id="clip">${playing ? "Stop" : "Play clip"}</button><button class="b" id="at">Show the moment</button></div>
+   <div class="why">${esc(ev.why || "")}</div>
+   <div class="row">${btn("confirm", "Confirm (c)", "good")}${btn("reject", "Did not happen (x)", "bad")}${btn("wrong_team", "Other team (t)", "neutral")}</div>
+   <div class="row"><div><label class="f">Shirt number (${esc(tn(v.verdict === "wrong_team" ? 1 - ev.team : ev.team))})</label><input type="number" id="num" value="${v.number ?? ""}"></div>
+   ${ev.type === "shot" ? `<div><label class="f">Outcome</label><select id="out">${["", "goal", "saved", "blocked", "off_target"].map((o) => `<option ${o === (v.outcome || "") ? "selected" : ""} value="${o}">${o || "(keep: " + esc(ev.outcome) + ")"}</option>`).join("")}</select></div>` : ""}</div>
+   <label class="f">Note</label><input type="text" id="enote" value="${esc(v.note || "")}">
+   ${["shot", "goal", "penalty"].includes(ev.type) ? `<h3>Location (improves xG)</h3>
+   <p style="font-size:12.5px">Pause on the strike, then click where the ball was hit and where the goalkeeper stands. The system's own
+   position comes from a 2-5 px ball; yours replaces it and xG is recomputed with the defenders from tracking.</p>
+   <div class="row"><button class="b ${clickMode === "shot" ? "sel" : ""}" id="cshot">Click shot location</button><button class="b ${clickMode === "gk" ? "sel" : ""}" id="cgk">Click goalkeeper</button></div>
+   <p style="font-size:12px;font-family:var(--mono)">${v.shot_xy ? `shot at x ${v.shot_xy[0].toFixed(1)} m, y ${v.shot_xy[1].toFixed(1)} m${v.shot_cam_ok === false ? ' <span class="status-warn">(camera pose doubtful)</span>' : ""}` : "shot: tracked position"}
+   · ${v.gk_xy ? `keeper at x ${v.gk_xy[0].toFixed(1)}, y ${v.gk_xy[1].toFixed(1)}` : "keeper: from tracking"}
+   ${v.shot_xy || v.gk_xy ? ' <a href="#" id="clrloc">clear</a>' : ""}</p>` : ""}` : "<p>Select an event below.</p>"}
+  <h3>Events</h3><div class="list">${cands.map((c) => { const r = verdictOf(c.key) || {};
+    return `<div class="item ${c.key === selEvent ? "sel" : ""}" data-ek="${esc(c.key)}"><span class="dot ${r.verdict === "confirm" ? "ok" : r.verdict === "reject" ? "bad" : r.verdict ? "neutral" : ""}"></span>
+    <span style="font-family:var(--mono)">${fmt(c.t)}</span><b>${esc(c.type)}</b><span>${esc(tn(c.team))}</span><span style="margin-left:auto;color:var(--muted)">${c.xg != null ? "xG " + c.xg.toFixed(2) : esc(c.source || "")}</span></div>`; }).join("") || '<div class="item">no goals / shots detected</div>'}</div>
+  <div class="why"><b>Why:</b> xG and the timeline are built from these few events, and the ball is the weakest part of
+  single-camera perception. Ten minutes of yes/no here makes the shot and goal numbers trustworthy and gives a measured
+  precision for each rule. Only the shirt numbers you type become player-level stats.</div>`);
+  document.querySelectorAll("[data-ek]").forEach((d) => (d.onclick = () => selectEvent(d.dataset.ek)));
+  document.querySelectorAll("[data-verdict]").forEach((b) => (b.onclick = () => setVerdict(b.dataset.verdict)));
+  bind("clip", "onclick", () => { if (playing) { setPlay(false); renderPanel(); return; } const a = Math.round((ev.t - 4) * fps), b = Math.round((ev.t + 3) * fps); seek(a); setPlay(true, [a, b]); renderPanel(); });
+  bind("at", "onclick", () => { setPlay(false); seek(ev.t * fps); });
+  bind("num", "onchange", (e) => upsertVerdict({ number: e.target.value === "" ? null : +e.target.value }));
+  bind("out", "onchange", (e) => upsertVerdict({ outcome: e.target.value || null }));
+  bind("enote", "onchange", (e) => upsertVerdict({ note: e.target.value }));
+  bind("cshot", "onclick", () => { setPlay(false); clickMode = clickMode === "shot" ? null : "shot"; renderPanel(); draw(); });
+  bind("cgk", "onclick", () => { setPlay(false); clickMode = clickMode === "gk" ? null : "gk"; renderPanel(); draw(); });
+  bind("clrloc", "onclick", (e) => { e.preventDefault(); const r = verdictOf(selEvent);
+    ["shot_uv", "shot_xy", "shot_frame", "shot_cam_ok", "gk_uv", "gk_xy", "gk_frame", "gk_cam_ok"].forEach((k) => delete r[k]); save(); renderPanel(); draw(); });
+};
+function selectEvent(key) { selEvent = key; const ev = S.candidates.find((c) => c.key === key); setPlay(false); if (ev) seek(ev.t * fps); renderPanel(); }
+function upsertVerdict(patch) { const ev = S.candidates.find((c) => c.key === selEvent); if (!ev) return;
+  let r = verdictOf(ev.key); if (!r) { r = { key: ev.key, t: ev.t, type: ev.type, team: ev.team, verdict: null, number: null, outcome: null, note: "" }; review.events.push(r); }
+  Object.assign(r, patch); save(); return r; }
+function setVerdict(v) { const r = upsertVerdict({}); if (!r) return; r.verdict = r.verdict === v ? null : v; save(); renderPanel(); }
+
+const LM_GROUPS = [["Halfway & centre", ["halfway_top", "circle_top", "centre", "circle_bottom", "halfway_bottom", "circle_left", "circle_right"]],
+  ["Left goal (as seen)", ["post_l_top", "post_l_bottom", "ga_l_top", "ga_l_bottom", "pa_l_top", "pa_l_bottom", "pa_l_top_line", "pa_l_bottom_line", "spot_l"]],
+  ["Right goal (as seen)", ["post_r_top", "post_r_bottom", "ga_r_top", "ga_r_bottom", "pa_r_top", "pa_r_bottom", "pa_r_top_line", "pa_r_bottom_line", "spot_r"]],
+  ["Corners", ["corner_tl", "corner_tr", "corner_bl", "corner_br"]]];
+function miniPitch(pts) {
+  let s = "";
+  S.pitch_lines.forEach((l) => { s += `<polyline fill="none" stroke="#e8f5e9" stroke-width="0.35" points="${l.map((p) => p.join(",")).join(" ")}"/>`; });
+  for (const [n, p] of Object.entries(S.landmarks)) s += `<circle data-lm="${n}" cx="${p[0]}" cy="${p[1]}" r="${n === selLm ? 2.2 : 1.4}" fill="${pts[n] ? "#ff4fd8" : n === selLm ? "#5fb3f0" : "#ffffff"}" stroke="#0008" stroke-width=".3" style="cursor:pointer"><title>${n}</title></circle>`;
+  return `<svg class="mini" viewBox="-4 -4 ${S.pitch_size[0] + 8} ${S.pitch_size[1] + 8}">${s}</svg>`;
+}
+
+P.repair = () => {
+  const lost = S.lost || [], reps = review.repairs = review.repairs || [];
+  const pts = repairPts[frame] || {};
+  const cur = lost.find((l) => frame / fps >= l.t0 - 1 && frame / fps <= l.t1 + 1);
+  if (!S.has_ptz) { html(`<h2>Camera repair</h2><p>This run uses a ${S.has_calibration ? "fixed (static) calibration: one homography for the whole match" : "camera without calibration"}.
+    If the frame checks show wrong lines, fix the landmarks in the <b>setup</b> UI (Pitch landmarks) and re-run.</p>`); return; }
+  html(`<h2>Camera repair</h2>
+  <p>The camera tracker loses the pitch after fast pans or zooms; those stretches are left out of every position-based number.
+  Camera usable on <b>${S.camera_coverage != null ? Math.round(100 * S.camera_coverage) : "?"} %</b> of the analysed frames; ${lost.length} lost stretch(es) ≥ 3 s,
+  ${(lost.reduce((a, l) => a + l.dur, 0) / 60).toFixed(1)} min in total.</p>
+  <p>1 · Pick a stretch (longest first matter most) — the video jumps to its <b>start</b>.<br>2 · Click 2-6 landmarks you can see.
+  <br>3 · <i>Fit</i>, check that the cyan lines sit on the painted lines, <i>Accept</i>. The tracker restarts from this pose when you re-run with <code>--repair</code>.</p>
+  <div class="list" style="max-height:200px">${lost.slice().sort((a, b) => b.dur - a.dur).map((l) => `<div class="item ${cur === l ? "sel" : ""}" data-lt="${l.frame0}">
+    <span class="dot ${reps.some((r) => Math.abs(r.t - l.t0) < l.dur + 2 && r.t >= l.t0 - 2) ? "ok" : "bad"}"></span><span style="font-family:var(--mono)">${fmt(l.t0)} → ${fmt(l.t1)}</span>
+    <span style="margin-left:auto;color:var(--muted)">${l.dur.toFixed(0)} s</span></div>`).join("") || '<div class="item">no lost stretch ≥ 3 s</div>'}</div>
+  ${miniPitch(pts)}
+  ${LM_GROUPS.map(([g, ns]) => `<h3>${g}</h3><div class="lm-list">${ns.filter((n) => S.landmarks[n]).map((n) =>
+    `<div class="lm ${n === selLm ? "sel" : ""} ${pts[n] ? "set" : ""}" data-lm="${n}"><span>${n}</span><small>${pts[n] ? (repairFit && repairFit.residuals && repairFit.residuals[n] != null ? repairFit.residuals[n].toFixed(1) + "px" : "✓") : ""}</small></div>`).join("")}</div>`).join("")}
+  <div class="row" style="margin-top:10px"><button class="b primary" id="rfit">Fit on this frame (${Object.keys(pts).length} points)</button><button class="b" id="rclear">clear points</button></div>
+  ${repairFit ? `<div class="why">${repairFit.method ? `Pose from ${repairFit.n} points: mean error <b>${repairFit.mean_err} px</b>${repairFit.line_err != null ? `, line alignment ${repairFit.line_err.toFixed(1)} px` : ""}.
+    <div style="margin-top:8px"><button class="b primary" id="racc">Accept as repair anchor</button></div>` : esc(repairFit.message)}</div>` : ""}
+  <h3>Repairs (${reps.length})</h3>
+  <table class="t">${reps.map((r, i) => `<tr><td><a href="#" data-gf="${r.frame}">${fmt(r.t)}</a></td><td>${Object.keys(r.points).length} pts, ${r.mean_err} px</td>
+    <td>re-run ${fmt(r.window[0])}–${fmt(r.window[1])}</td><td>${r.applied ? "applied ✓" : "pending"}</td><td><button class="b" data-dr="${i}">✕</button></td></tr>`).join("") || "<tr><td>none yet</td></tr>"}</table>
+  <div class="why"><b>Why manual:</b> a wrong camera pose puts every player in the wrong place, so the quality gate drops those frames.
+  Two or three clicks give the tracker a correct restart pose; only the repaired windows are processed again (minutes, not hours).</div>`);
+  document.querySelectorAll("[data-lt]").forEach((d) => (d.onclick = () => { setPlay(false); repairFit = null; seek(+d.dataset.lt); }));
+  document.querySelectorAll("[data-lm]").forEach((d) => (d.onclick = () => { selLm = d.dataset.lm; renderPanel(); }));
+  document.querySelectorAll("[data-gf]").forEach((a) => (a.onclick = (e) => { e.preventDefault(); seek(+a.dataset.gf); }));
+  document.querySelectorAll("[data-dr]").forEach((b) => (b.onclick = () => { reps.splice(+b.dataset.dr, 1); save(); renderPanel(); }));
+  bind("rclear", "onclick", () => { delete repairPts[frame]; repairFit = null; renderPanel(); draw(); });
+  bind("rfit", "onclick", async () => { if (Object.keys(pts).length < 2) { flash("Click at least 2 landmarks", true); return; }
+    $("panel").classList.add("busy"); try { repairFit = await api("/api/fit", { frame, points: pts }); repairFit.frame = frame; } finally { $("panel").classList.remove("busy"); }
+    renderPanel(); draw(); });
+  bind("racc", "onclick", () => { const t = frame / fps; const l = lost.find((x) => t >= x.t0 - 1 && t <= x.t1 + 1);
+    const w1 = Math.min((l ? l.t1 : t + 30) + 5, t + 180);
+    reps.push({ frame, t: +t.toFixed(2), pose: repairFit.pose, points: pts, mean_err: repairFit.mean_err, line_err: repairFit.line_err,
+      window: [+t.toFixed(2), +w1.toFixed(2)], applied: false });
+    save(); renderPanel(); });
+};
+
+P.exclude = () => {
+  const ex = setup.exclusions = setup.exclusions || [];
+  const reasons = ["replay / not live", "camera off the pitch (crowd, sky)", "injury / long stoppage", "view blocked", "warm-up / break inside a period", "other"];
+  pendingEx = pendingEx || {};
+  html(`<h2>Exclude stretches</h2>
+  <p>Mark parts of the video that are not usable live play. They are treated like "camera lost": no positions, possession unknown
+  (not dead ball), and automatic events inside them are dropped (yours and the match sheet's are kept).</p>
+  <div class="row"><button class="b" id="ex0">Start = ${fmt(frame / fps)}</button><button class="b" id="ex1">End = ${fmt(frame / fps)}</button></div>
+  <p style="font-family:var(--mono);font-size:12.5px">${pendingEx.t0 != null ? fmt(pendingEx.t0) : "—"} → ${pendingEx.t1 != null ? fmt(pendingEx.t1) : "—"}</p>
+  <label class="f">Reason</label><select id="exr">${reasons.map((r) => `<option ${r === pendingEx.reason ? "selected" : ""}>${r}</option>`).join("")}</select>
+  <div class="row" style="margin-top:10px"><button class="b primary" id="exadd">Add stretch</button></div>
+  <h3>Excluded (${ex.length}, ${(ex.reduce((a, e) => a + e.t1 - e.t0, 0) / 60).toFixed(1)} min)</h3>
+  <table class="t">${ex.map((e, i) => `<tr><td><a href="#" data-gt="${e.t0}">${fmt(e.t0)}</a> → ${fmt(e.t1)}</td><td>${esc(e.reason || "")}</td><td><button class="b" data-dx="${i}">✕</button></td></tr>`).join("") || "<tr><td>none</td></tr>"}</table>
+  <div class="why"><b>Why manual:</b> a replay, a shot of the crowd or a long injury break looks like a stoppage or like play to the rules —
+  false set pieces, fouls and a wrong "ball in play" time. You recognise them instantly; the system cannot. Saved in the match setup,
+  so they stay valid for every re-run.</div>`);
+  bind("ex0", "onclick", () => { pendingEx.t0 = +(frame / fps).toFixed(2); renderPanel(); });
+  bind("ex1", "onclick", () => { pendingEx.t1 = +(frame / fps).toFixed(2); renderPanel(); });
+  bind("exr", "onchange", (e) => { pendingEx.reason = e.target.value; });
+  bind("exadd", "onclick", () => { if (pendingEx.t0 == null || pendingEx.t1 == null || pendingEx.t1 <= pendingEx.t0) { flash("Set a start before the end", true); return; }
+    ex.push({ t0: pendingEx.t0, t1: pendingEx.t1, reason: pendingEx.reason || reasons[0] }); ex.sort((a, b) => a.t0 - b.t0); pendingEx = {}; saveSetup("exclusions"); renderPanel(); draw(); });
+  document.querySelectorAll("[data-dx]").forEach((b) => (b.onclick = () => { ex.splice(+b.dataset.dx, 1); saveSetup("exclusions"); renderPanel(); draw(); }));
+  document.querySelectorAll("[data-gt]").forEach((a) => (a.onclick = (e) => { e.preventDefault(); seek(+a.dataset.gt * fps); }));
+};
+let pendingEx = null;
+
+P.add = () => {
+  const nm = S.team_names, add = review.added_events;
+  html(`<h2>Missing events</h2>
+  <p>Saw something the rules missed? Pause on the moment and add it.</p>
+  <div class="row"><div><label class="f">Type</label><select id="at">${["goal", "shot", "yellow", "red", "penalty", "corner"].map((t) => `<option ${addForm.type === t ? "selected" : ""}>${t}</option>`).join("")}</select></div>
+  <div><label class="f">Team</label><select id="ateam"><option value="0">${esc(nm[0])}</option><option value="1" ${addForm.team === "1" ? "selected" : ""}>${esc(nm[1])}</option></select></div>
+  <div><label class="f">Shirt #</label><input type="number" id="anum" value="${esc(addForm.num || "")}"></div></div>
+  <label class="f">Note</label><input type="text" id="anote" value="${esc(addForm.note || "")}">
+  <div class="row" style="margin-top:8px"><button class="b ${clickMode === "shot" ? "sel" : ""}" id="cshot">Click shot location</button><button class="b ${clickMode === "gk" ? "sel" : ""}" id="cgk">Click goalkeeper</button></div>
+  <p style="font-size:12px;color:var(--muted)">Optional, for shots / goals: with a location the added shot gets an xG; without it, it counts as a shot with no xG.
+  ${pendingAdd.shot_xy ? `<br>shot at x ${pendingAdd.shot_xy[0].toFixed(1)} m, y ${pendingAdd.shot_xy[1].toFixed(1)} m` : ""}</p>
+  <div class="row" style="margin-top:10px"><button class="b primary" id="addnow">Add at ${fmt(frame / fps)}</button></div>
+  <h3>Added (${add.length})</h3>
+  <table class="t">${add.map((a, i) => `<tr><td><a href="#" data-gt="${a.t}">${fmt(a.t)}</a></td><td>${esc(a.type)}</td><td>${esc(nm[a.team] || "")}</td><td>${a.number ?? ""}</td><td>${esc(a.note || "")}</td><td><button class="b" data-del="${i}">✕</button></td></tr>`).join("") || "<tr><td>none</td></tr>"}</table>
+  <div class="why"><b>Why:</b> added events enter the statistics marked <i>added by hand</i>, and their count is reported as the
+  recall gap of the rules on this match.</div>`);
+  bind("addnow", "onclick", () => { add.push(Object.assign({ t: +(frame / fps).toFixed(2), type: $("at").value, team: +$("ateam").value,
+    number: $("anum").value === "" ? null : +$("anum").value, note: $("anote").value }, pendingAdd)); pendingAdd = {}; addForm = {}; save(); renderPanel(); draw(); });
+  [["at", "type"], ["ateam", "team"], ["anum", "num"], ["anote", "note"]].forEach(([id, k]) => bind(id, "onchange", (e) => { addForm[k] = e.target.value; }));
+  bind("cshot", "onclick", () => { setPlay(false); clickMode = clickMode === "shot" ? null : "shot"; renderPanel(); draw(); });
+  bind("cgk", "onclick", () => { setPlay(false); clickMode = clickMode === "gk" ? null : "gk"; renderPanel(); draw(); });
+  document.querySelectorAll("[data-del]").forEach((b) => (b.onclick = () => { add.splice(+b.dataset.del, 1); save(); renderPanel(); }));
+  document.querySelectorAll("[data-gt]").forEach((a) => (a.onclick = (e) => { e.preventDefault(); seek(+a.dataset.gt * fps); }));
+};
+
+P.summary = async () => {
+  const r = await api("/api/review", review); S.summary = r.summary;
+  const sp = S.setup_path, cfg = S.config ? " --config " + S.config : "";
+  html(`<h2>Summary</h2>
+  <p>Measured on this match from your answers (shown in the report under <i>Measured reliability</i>).</p>
+  <table class="t"><tr><th>check</th><th>result</th></tr>${S.summary.map((x) => `<tr><td>${esc(x.check)}<br><span style="color:var(--muted)">${esc(x.meaning)}</span></td><td>${esc(x.result)}</td></tr>`).join("")}</table>
+  <h3>Apply</h3><p>Re-run the analytics only (seconds) — confirmed, rejected and added events, the match sheet and the
+  measured reliability go into the stats and the report:</p>
+  <code class="cmd">python run_analysis.py --tracks ${esc(S.run)}${esc(cfg)} --setup ${esc(sp)} --out ${esc(S.run)}</code>
+  ${(review.repairs || []).some((r) => !r.applied) ? `<p>You accepted ${(review.repairs || []).filter((r) => !r.applied).length} camera repair(s): add <code>--repair</code> to re-process only those
+  windows first (a few minutes each):</p><code class="cmd">python run_analysis.py --tracks ${esc(S.run)} --repair${esc(cfg)} --setup ${esc(sp)} --out ${esc(S.run)}</code>` : ""}
+  ${(setup.exclusions || []).length ? `<p>${setup.exclusions.length} excluded stretch(es) are saved in the setup and applied by the same command.</p>` : ""}`);
+};
+
+// ------------------------------------------------------------------ keys
+window.addEventListener("keydown", (e) => {
+  if (["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+  const k = e.key;
+  if (k === " ") { e.preventDefault(); setPlay(!playing); }
+  else if (k === "ArrowRight") { setPlay(false); seek(frame + (e.shiftKey ? 1 : 0.2) * fps); }
+  else if (k === "ArrowLeft") { setPlay(false); seek(frame - (e.shiftKey ? 1 : 0.2) * fps); }
+  else if (step === "checks") {
+    if (k === "g") setCheck("lines", "good"); else if (k === "b") setCheck("lines", "bad"); else if (k === "n") setCheck("lines", "no_lines");
+    else if (k === "1") setCheck("teams", "good"); else if (k === "2") setCheck("teams", "bad");
+    else if (k === "j") selectCheck(selCheck + 1); else if (k === "k") selectCheck(selCheck - 1);
+  } else if (step === "events" && selEvent) {
+    if (k === "c") setVerdict("confirm"); else if (k === "x") setVerdict("reject"); else if (k === "t") setVerdict("wrong_team");
+  }
+});
+
+// ------------------------------------------------------------------ boot
+(async function boot() {
+  S = await api("/api/state");
+  setup = S.setup; review = S.review || null;
+  W = S.video.width; H = S.video.height; fps = S.video.fps; nFrames = S.video.n_frames;
+  scale = W <= 800 ? 2 : 1; cv.width = W * scale; cv.height = H * scale; try { showOutside = localStorage.getItem("fve_outside") === "1"; } catch (e) { showOutside = false; }
+  $("title").textContent = S.mode === "review" ? "Match review" : "Match setup";
+  document.title = $("title").textContent;
+  $("file").textContent = S.video_name + (S.mode === "review" ? "  →  " + S.run : "");
+  $("caption").textContent = S.mode === "review"
+    ? "Magenta = pitch model projected with the camera calibration; boxes coloured by the team the system assigned."
+    : "Your inputs are saved to " + S.setup_path + " — re-usable for every match at the same ground.";
+  step = S.mode === "review" ? "checks" : "match";
+  renderNav(); renderPanel();
+  if (S.mode === "review" && review.frame_checks.length) selectCheck(0);
+  else { const p = (setup.periods || [])[0]; seek(p && p.start != null ? p.start * fps : Math.min(nFrames - 1, 60 * fps)); }
+  if (S.mode === "review") save();   // persist the sampled frames
+})();
+</script>
+</body>
+</html>

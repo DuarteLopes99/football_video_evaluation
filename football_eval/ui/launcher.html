@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Match Launcher</title>
+<style>
+:root{
+  --bg:#121417; --panel:#1b1e22; --panel2:#23272c; --line:#30353b; --text:#e7e9ec; --muted:#9aa1a9;
+  --accent:#8fd16a; --accent2:#5fb3f0; --ok:#4fbf7f; --warn:#e3a73c; --bad:#e5594f; --flag:#f2a93b;
+  --t0:#4a90e2; --t1:#ef8a3c; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif}
+a{color:var(--accent2)}
+header{display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--line);background:#16191c;flex-wrap:wrap}
+header h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.2px;display:flex;align-items:center;gap:8px}
+header .spacer{flex:1}
+.pill{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--panel2);color:var(--muted);white-space:nowrap}
+.pill.ok{background:#1f3a2a;color:#a8e6bf} .pill.warn{background:#3a2f17;color:#f1cc85} .pill.run{background:#18324a;color:#a9d4f7}
+main{display:grid;grid-template-columns:330px minmax(0,1fr);height:calc(100vh - 49px)}
+#lib{border-right:1px solid var(--line);overflow:auto;background:var(--panel);display:flex;flex-direction:column}
+#lib .sec{padding:14px 14px 6px}
+h2{font-size:12px;margin:0 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;font-weight:600}
+h3{font-size:15px;margin:0 0 4px}
+.libbox{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px;background:var(--panel2)}
+.libbox .n{font-weight:600}
+.libbox .p{font-family:var(--mono);font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.libbox .m{font-size:12px;color:var(--muted);margin-top:3px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.libbox.missing{opacity:.6}
+.vlist{padding:0 8px 8px;flex:1}
+.vid{display:block;width:100%;text-align:left;border:1px solid transparent;background:transparent;color:var(--text);
+  border-radius:8px;padding:9px 10px;margin:2px 0;cursor:pointer;font:inherit}
+.vid:hover{background:var(--panel2)} .vid.sel{background:var(--panel2);border-color:#3b4652}
+.vid .nm{font-size:13px;font-weight:500;overflow-wrap:anywhere}
+.vid .meta{font-size:11.5px;color:var(--muted);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+.tag{font-size:11px;padding:1px 6px;border-radius:4px;background:#2c3238;color:#c4cad1}
+.tag.ok{background:#1f3a2a;color:#a8e6bf} .tag.cloud{background:#18324a;color:#a9d4f7} .tag.flag{background:#3a2a10;color:var(--flag)}
+.drop{margin:8px 14px 14px;border:1.5px dashed #3b434c;border-radius:10px;padding:14px;text-align:center;color:var(--muted);font-size:12.5px;cursor:pointer}
+.drop.over{border-color:var(--accent);color:var(--accent);background:#1a2416}
+.bar{height:6px;background:#2a2f35;border-radius:4px;overflow:hidden;margin-top:6px}
+.bar>div{height:100%;background:var(--accent);width:0;transition:width .4s}
+#work{overflow:auto;display:flex;flex-direction:column;min-width:0}
+.tabs{display:flex;gap:2px;padding:10px 18px 0;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:3}
+.tabs button{background:none;border:0;color:var(--muted);padding:9px 14px;font:inherit;font-weight:500;cursor:pointer;border-bottom:2px solid transparent}
+.tabs button.on{color:var(--text);border-bottom-color:var(--accent)}
+.view{padding:16px 18px 30px;display:none} .view.on{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:12px}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.step{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.step .hd{display:flex;align-items:center;gap:10px}
+.step .num{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--panel2);color:var(--muted);flex:none}
+.step.done .num{background:var(--ok);color:#0d1a12}
+.step .t{font-weight:600}
+.step p{margin:0;color:#b9c0c7;font-size:12.5px}
+label.f{display:block;font-size:12px;color:var(--muted);margin:2px 0 3px}
+input[type=text],input[type=number],select{width:100%;background:#111316;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font:inherit;font-size:13px}
+.row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap} .row>.g{flex:1;min-width:140px}
+.chk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:#c9ced4}
+button.b{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:6px 12px;cursor:pointer;font:inherit;font-size:13px;white-space:nowrap}
+button.b:hover{border-color:#4a5058} button.b:disabled{opacity:.45;cursor:default}
+button.b.primary{background:var(--accent);color:#122008;border-color:var(--accent);font-weight:600}
+button.b.blue{background:#1d3c57;border-color:#2c5a82;color:#d6ebfc}
+button.b.danger{background:#3d1f1d;border-color:#7a3530}
+button.b.sm{padding:3px 8px;font-size:12px}
+code,.cmd{font-family:var(--mono);font-size:11.5px}
+.cmd{background:#0e1012;border:1px solid var(--line);border-radius:6px;padding:7px 9px;color:#b6d7a0;overflow-wrap:anywhere;white-space:pre-wrap}
+.empty{color:var(--muted);padding:30px;text-align:center}
+.jobbox{margin-top:12px}
+.jobhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.jobhead .ttl{font-weight:600;flex:1;min-width:200px}
+.st{font-size:11.5px;padding:2px 8px;border-radius:999px;font-weight:600}
+.st.running{background:#18324a;color:#a9d4f7} .st.done{background:#1f3a2a;color:#a8e6bf} .st.failed{background:#3d1f1d;color:#f3aaa4} .st.stopped{background:#33302a;color:#d8c9a8}
+pre.log{background:#0b0c0e;border:1px solid var(--line);border-radius:8px;padding:10px;max-height:340px;overflow:auto;font:11.5px/1.45 var(--mono);color:#cfd5db;margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.res{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(330px,1fr);gap:14px;align-items:start}
+.player{background:#000;border-radius:10px;overflow:hidden;position:sticky;top:58px}
+.player video{display:block;width:100%;aspect-ratio:16/9;background:#000}
+.nowbar{background:var(--panel);padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line)}
+.nowbar .d{flex:1;min-width:180px;font-size:13px}
+.score{font-size:22px;font-weight:700;letter-spacing:.3px}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:1px}
+.olist{display:flex;flex-direction:column;gap:5px}
+.opp{display:grid;grid-template-columns:22px 46px minmax(0,1fr) auto;gap:8px;align-items:start;padding:8px 9px;border-radius:8px;border:1px solid var(--line);
+  background:var(--panel);cursor:pointer;text-align:left;color:var(--text);font:inherit;width:100%}
+.opp:hover{border-color:#4a5058} .opp.cur{border-color:var(--accent);background:#1a2117}
+.opp .fl{color:var(--flag);font-size:15px;line-height:1.2}
+.opp .ck{font-family:var(--mono);font-size:12px;color:#c9ced4}
+.opp .ck small{display:block;color:var(--muted);font-size:10.5px}
+.opp .cat{font-weight:600;font-size:13px}
+.opp .ds{font-size:12px;color:#b9c0c7;margin-top:1px}
+.opp .xg{font-family:var(--mono);font-size:12px;text-align:right;color:#c9ced4}
+.opp .xg small{display:block;color:var(--muted);font-size:10.5px}
+.opp.goal{background:#15261b}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px;align-items:center}
+.chipb{background:var(--panel2);border:1px solid var(--line);color:#c9ced4;border-radius:999px;padding:3px 10px;font-size:12px;cursor:pointer}
+.chipb.on{background:#2b3a22;border-color:#4d6b38;color:#d6f2c2}
+table.km{width:100%;border-collapse:collapse;font-size:12.5px}
+table.km td,table.km th{border-bottom:1px solid var(--line);padding:5px 6px;text-align:right}
+table.km td:first-child,table.km th:first-child{text-align:left}
+.cf{font-size:11px;padding:1px 6px;border-radius:3px;color:#fff}
+.cf.High{background:#1f8a4c}.cf.Medium{background:#2a78d6}.cf.Low{background:#b07100}
+.note{color:var(--muted);font-size:12px}
+.toast{position:fixed;right:18px;bottom:18px;background:#2a2f35;border:1px solid var(--line);padding:10px 14px;border-radius:8px;max-width:420px;box-shadow:0 8px 30px #0008;z-index:10;display:none}
+.toast.err{border-color:#7a3530;background:#3a1f1d}
+.jobs-table{width:100%;border-collapse:collapse;font-size:13px}
+.jobs-table td,.jobs-table th{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left}
+.jobs-table tr{cursor:pointer} .jobs-table tr:hover td{background:var(--panel)}
+/* manual decisions */
+.mbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
+.mbar .info{flex:1;min-width:220px;font-size:12.5px;color:#c9ced4}
+#mframe{display:block;width:100%;height:calc(100vh - 49px - 46px - 54px);border:0;background:var(--bg)}
+#v-manual{padding:0}
+/* match screen */
+.ms{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}
+.stage{position:relative;background:#000;border-radius:10px;overflow:hidden}
+.stage video,.stage canvas.ov,.stage img{position:absolute;inset:0;width:100%;height:100%;display:block}
+.stage video{object-fit:fill}
+.stage canvas.ov{pointer-events:none}
+.stage .msg{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:13px;text-align:center;padding:20px}
+.tl{position:relative;height:46px;background:var(--panel);border:1px solid var(--line);border-radius:8px;margin-top:8px;cursor:pointer}
+.tl canvas{width:100%;height:100%;display:block}
+.toggles{display:flex;gap:10px;flex-wrap:wrap;margin:8px 0;font-size:12.5px}
+.toggles label{display:flex;gap:5px;align-items:center;color:#c9ced4;cursor:pointer}
+.side h2{margin-top:2px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:12.5px}
+.kv span:nth-child(odd){color:var(--muted)}
+#mini{width:100%;background:#2b5f33;border-radius:6px;display:block}
+.evlist{font-size:12px;display:flex;flex-direction:column;gap:3px;max-height:220px;overflow:auto}
+.evlist div{padding:3px 6px;border-radius:4px;background:var(--panel2);cursor:pointer}
+.legend2{display:flex;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:6px}
+.sw2{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+/* guide */
+.guide{display:grid;grid-template-columns:220px minmax(0,1fr);gap:18px;align-items:start}
+.toc{position:sticky;top:58px;font-size:12.5px;max-height:calc(100vh - 140px);overflow:auto}
+.toc a{display:block;color:#b9c0c7;text-decoration:none;padding:3px 6px;border-radius:4px}
+.toc a:hover{background:var(--panel2);color:var(--text)} .toc a.h3{padding-left:16px;font-size:12px;color:var(--muted)}
+.md{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 26px 28px;line-height:1.6;max-width:980px;overflow-wrap:anywhere}
+.md h1{font-size:22px;margin:4px 0 12px} .md h2{font-size:17px;margin:26px 0 8px;color:var(--text);text-transform:none;letter-spacing:0;padding-top:10px;border-top:1px solid var(--line)}
+.md h3{font-size:14.5px;margin:18px 0 6px} .md h4{font-size:13.5px;margin:14px 0 4px;color:#c9ced4}
+.md p{margin:8px 0;color:#d5dade} .md li{margin:3px 0;color:#d5dade} .md ul,.md ol{padding-left:22px;margin:6px 0}
+.md code{background:#0e1012;border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:12px}
+.md pre{background:#0b0c0e;border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow:auto;font:12px/1.5 var(--mono);color:#b6d7a0}
+.md pre code{background:none;border:0;padding:0}
+.md table{border-collapse:collapse;margin:10px 0;font-size:12.5px;display:block;overflow:auto}
+.md td,.md th{border:1px solid var(--line);padding:5px 8px;vertical-align:top;text-align:left} .md th{background:var(--panel2)}
+.md blockquote{border-left:3px solid var(--accent2);margin:8px 0;padding:4px 12px;color:#b9c0c7;background:var(--panel2)}
+.md hr{border:0;border-top:1px solid var(--line);margin:18px 0}
+@media (max-width:900px){.guide{grid-template-columns:1fr}.toc{position:static;max-height:none}}
+@media (max-width:900px){.ms{grid-template-columns:1fr}main{grid-template-columns:1fr;height:auto}#lib{border-right:0;border-bottom:1px solid var(--line);max-height:45vh}.res{grid-template-columns:1fr}.player{position:static}}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚽ Football video evaluation <span class="note" style="font-weight:400">launcher</span></h1>
+  <span class="pill" id="ffmpeg"></span>
+  <span class="pill" id="running"></span>
+  <span class="spacer"></span>
+  <button class="b sm" onclick="startJob({kind:'synthetic'})" title="Runs the whole analytics on a simulated match with ground truth">Synthetic demo</button>
+  <button class="b sm" onclick="startJob({kind:'tests'})">Run tests</button>
+  <button class="b sm" onclick="showTab('guide')" title="How to use the system">? Guide</button>
+  <button class="b sm danger" onclick="quitLauncher()" title="Stop the launcher and its jobs">Quit</button>
+</header>
+<main>
+  <section id="lib">
+    <div class="sec">
+      <h2>Video libraries</h2>
+      <div id="libs"></div>
+      <div class="note">Edit <code id="stfile">configs/storage.yaml</code> to add an external drive or a cloud folder (docs/VIDEO_STORAGE.md).</div>
+    </div>
+    <div class="sec" style="padding-bottom:2px"><h2>Recordings</h2></div>
+    <div class="vlist" id="videos"></div>
+    <div class="drop" id="drop">Drop an .mp4 here (or click) to add it to <b id="droplib">Local</b>
+      <input type="file" id="file" accept="video/*,.mp4,.mov,.mkv,.m4v" style="display:none">
+      <div class="bar" id="upbar" style="display:none"><div></div></div>
+    </div>
+  </section>
+
+  <section id="work">
+    <nav class="tabs">
+      <button data-v="analyse" class="on">Analyse</button>
+      <button data-v="manual">Manual decisions</button>
+      <button data-v="screen">Match screen</button>
+      <button data-v="results">Results &amp; opportunities</button>
+      <button data-v="jobs">Jobs</button>
+      <button data-v="guide">Guide</button>
+    </nav>
+
+    <!-- ANALYSE -->
+    <div class="view on" id="v-analyse">
+      <div id="nosel" class="empty">Choose a recording on the left, or drop a new one.</div>
+      <div id="sel" style="display:none">
+        <div class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <div style="flex:1;min-width:240px">
+            <h3 id="s-name"></h3>
+            <div class="note" id="s-meta"></div>
+          </div>
+          <div class="row" style="align-items:center">
+            <label class="chk" title="The shortcut also starts step 2 when double-clicked"><input type="checkbox" id="sc-start"> start processing when opened</label>
+            <button class="b sm" id="s-shortcut" title="A file on the Desktop that opens the launcher with this recording, config and setup chosen">Desktop shortcut</button>
+            <button class="b sm" id="s-archive" style="display:none">Move to archive</button>
+            <button class="b sm" id="s-results">Results</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="row">
+            <div class="g"><label class="f">Venue / match config (camera, detector, overlays)</label><select id="cfg"></select></div>
+            <div class="g"><label class="f">Match setup (pitch size, kits, periods, match sheet)</label><select id="setup"></select></div>
+            <div class="g" style="max-width:260px"><label class="f">Output folder</label><input type="text" id="run" placeholder="outputs/…"></div>
+          </div>
+        </div>
+        <div class="steps">
+          <div class="step" id="st1">
+            <div class="hd"><span class="num">1</span><span class="t">Setup</span><span class="note">~10 min, once per match</span></div>
+            <p>Pitch size, periods, direction of play, overlays, kit clicks, landmarks and the match sheet — what one camera cannot infer reliably. Opens in <b>Manual decisions</b>.</p>
+            <div class="row"><button class="b blue" onclick="openManual('setup')">Open setup</button></div>
+          </div>
+          <div class="step" id="st2">
+            <div class="hd"><span class="num">2</span><span class="t">Process the video</span><span class="note">~1-2 h for a full match (standard, laptop)</span></div>
+            <p>Detection, tracking, teams, camera, ball → events, xG, stats, opportunities and the report. Clips of the flagged opportunities are cut at the end. Watch it work on the <b>Match screen</b> (Live).</p>
+            <div class="row">
+              <label class="chk" title="The detector is ~95 % of the time: analysed frames per second x tiles per frame">Speed
+                <select id="speed" style="width:auto;padding:2px 6px;margin-left:4px">
+                  <option value="fast">fast — 5 fps, big tiles</option><option value="standard" selected>standard — 10 fps</option>
+                  <option value="quality">quality — 10 fps, small tiles</option></select></label>
+              <label class="chk"><input type="checkbox" id="quick"> quick test: first <input type="number" id="qframes" value="600" style="width:76px;padding:2px 6px"> frames</label>
+              <label class="chk"><input type="checkbox" id="force"> ignore setup checklist</label>
+            </div>
+            <div class="note" id="est-analyse" style="margin:6px 0"></div>
+            <div class="cmd" id="cmd-analyse"></div>
+            <div class="row"><button class="b primary" onclick="startJob(req('analyse'))">▶ Start analysis</button></div>
+          </div>
+          <div class="step" id="st3">
+            <div class="hd"><span class="num">3</span><span class="t">Review</span><span class="note">~10 min</span></div>
+            <p>Check ~16 frames and every goal / shot (confirm, reject, flip team, shirt number, shot location), repair lost camera stretches, add missing events, exclude stretches.</p>
+            <div class="row"><button class="b blue" onclick="openManual('review')">Open review</button></div>
+          </div>
+          <div class="step" id="st4">
+            <div class="hd"><span class="num">4</span><span class="t">Apply the review</span><span class="note">seconds</span></div>
+            <p>Re-runs only the analytics with your verdicts: stats, opportunities, report.</p>
+            <label class="chk"><input type="checkbox" id="repair"> also re-process the camera repairs marked in the review</label>
+            <div class="row"><button class="b" onclick="startJob(req(document.getElementById('repair').checked?'repair':'analytics'))">Re-run analytics</button></div>
+          </div>
+        </div>
+        <div class="card jobbox" id="jobbox" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- MANUAL DECISIONS -->
+    <div class="view" id="v-manual">
+      <div class="mbar">
+        <div class="info" id="minfo">Nothing open. Choose a recording, then <b>Setup</b> (before processing) or <b>Review</b> (after).</div>
+        <button class="b sm blue" onclick="openManual('setup')">Setup</button>
+        <button class="b sm blue" onclick="openManual('review')">Review</button>
+        <button class="b sm" id="mapply" style="display:none" onclick="startJob(req('analytics'))">Apply review → re-run analytics</button>
+        <button class="b sm" onclick="window.open('/m/', '_blank')">↗ new window</button>
+      </div>
+      <iframe id="mframe" src="/m/"></iframe>
+    </div>
+
+    <!-- MATCH SCREEN -->
+    <div class="view" id="v-screen">
+      <div class="card" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;padding:10px 14px">
+        <div style="min-width:240px;flex:1"><label class="f">Match</label><select id="msrun"></select></div>
+        <div class="filters" style="margin:0">
+          <span class="chipb" data-ms="live">● Live (processing)</span><span class="chipb on" data-ms="replay">▶ Replay (analysed)</span>
+        </div>
+      </div>
+      <div class="ms">
+        <div>
+          <div class="stage" id="stage" style="aspect-ratio:16/9">
+            <video id="msvideo" playsinline preload="metadata"></video>
+            <canvas class="ov" id="ov"></canvas>
+            <img id="liveimg" alt="" style="display:none">
+            <div class="msg" id="msmsg">Choose an analysed match.</div>
+          </div>
+          <div id="replayctl">
+            <div class="row" style="margin-top:8px;align-items:center">
+              <button class="b sm" id="msplay">▶ Play</button>
+              <button class="b sm" id="msback">−5 s</button><button class="b sm" id="msfwd">+5 s</button>
+              <select id="msrate" style="width:auto"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+              <span class="note" id="mstime" style="font-family:var(--mono)"></span>
+              <span style="flex:1"></span>
+              <button class="b sm" id="msprevev">◀ event</button><button class="b sm" id="msnextev">event ▶</button>
+            </div>
+            <div class="tl" id="tl"><canvas id="tlc"></canvas></div>
+            <div class="toggles" id="tgl">
+              <label><input type="checkbox" data-k="lines" checked> pitch lines</label>
+              <label><input type="checkbox" data-k="boxes" checked> players</label>
+              <label><input type="checkbox" data-k="ids"> track ids</label>
+              <label><input type="checkbox" data-k="ball" checked> ball</label>
+              <label><input type="checkbox" data-k="events" checked> event banners</label>
+              <label><input type="checkbox" data-k="mini" checked> minimap in video</label>
+              <label><input type="checkbox" data-k="ignored"> ignored regions</label>
+            </div>
+          </div>
+        </div>
+        <div class="side">
+          <div class="card">
+            <h2 id="sidetitle">Now</h2>
+            <div class="kv" id="nowkv"></div>
+            <div class="bar" id="livebar" style="display:none"><div></div></div>
+          </div>
+          <div class="card"><h2>Pitch</h2><canvas id="mini" width="300" height="190"></canvas>
+            <div class="legend2"><span><i class="sw2" style="background:var(--t0)"></i><span id="lg0">Team A</span></span><span><i class="sw2" style="background:var(--t1)"></i><span id="lg1">Team B</span></span><span><i class="sw2" style="background:#ffe14d"></i>ball</span><span><i class="sw2" style="background:#bbb"></i>other</span></div></div>
+          <div class="card"><h2 id="evtitle">Events</h2><div class="evlist" id="evlist"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="view" id="v-results">
+      <div class="card" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <div style="min-width:240px;flex:1"><label class="f">Analysed match</label><select id="runsel"></select></div>
+        <div class="score" id="score"></div>
+        <div class="row" style="align-items:center">
+          <button class="b" id="btn-report">Open full report</button>
+          <button class="b" id="btn-clips">✂ Cut clips (flagged)</button>
+          <button class="b sm" id="btn-clipsall">all</button>
+          <button class="b sm" id="btn-folder">Folder</button>
+        </div>
+      </div>
+      <div id="noruns" class="empty" style="display:none">No analysed match yet — run step 2, or the synthetic demo (top right).</div>
+      <div class="res" id="resbody">
+        <div>
+          <div class="player">
+            <video id="vplayer" controls preload="metadata" playsinline></video>
+            <div class="nowbar">
+              <button class="b sm" id="prev">◀ prev ⚑</button>
+              <div class="d" id="now">Click an opportunity to jump to it.</div>
+              <button class="b sm" id="next">next ⚑ ▶</button>
+              <button class="b sm blue" id="toscreen" title="Same moment on the Match screen, with every overlay">overlays ⧉</button>
+            </div>
+          </div>
+          <div class="card" style="margin-top:12px"><h2>Key metrics</h2><div id="kmetrics" class="note"></div></div>
+        </div>
+        <div>
+          <div class="filters" id="filters">
+            <span class="chipb on" data-f="flag">⚑ Flagged</span><span class="chipb" data-f="all">All</span>
+            <span style="width:8px"></span>
+            <span class="chipb on" data-t="-1">Both teams</span><span class="chipb" data-t="0" id="ft0">A</span><span class="chipb" data-t="1" id="ft1">B</span>
+          </div>
+          <div class="olist" id="olist"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GUIDE -->
+    <div class="view" id="v-guide">
+      <div class="filters" id="docsel" style="margin-bottom:12px"></div>
+      <div class="guide"><nav class="toc" id="toc"></nav><article class="md" id="md">Loading…</article></div>
+    </div>
+
+    <!-- JOBS -->
+    <div class="view" id="v-jobs">
+      <div class="card"><table class="jobs-table" id="jobs"></table></div>
+      <div class="card jobbox" id="jobbox2" style="display:none"></div>
+    </div>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let S = null, selVid = null, curRun = null, R = null, oFilter = 'flag', tFilter = -1, curOpp = null;
+let watchJob = null, logNext = 0, logTimer = null, prefs = {};
+try { prefs = JSON.parse(localStorage.getItem('fve_prefs') || '{}'); } catch (e) { prefs = {}; }
+const savePrefs = () => { try { localStorage.setItem('fve_prefs', JSON.stringify(prefs)); } catch (e) {} };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtT = s => { s = Math.round(s); const h = Math.floor(s/3600), m = Math.floor(s%3600/60), x = s%60; return (h? h+':'+String(m).padStart(2,'0') : String(m).padStart(2,'0'))+':'+String(x).padStart(2,'0'); };
+const fmtDur = s => s < 90 ? Math.round(s)+' s' : s < 5400 ? Math.round(s/60)+' min' : (s/3600).toFixed(1)+' h';
+
+function toast(msg, err) { const t = $('toast'); t.textContent = msg; t.className = 'toast' + (err? ' err':''); t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', err? 7000 : 3500); }
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {} : {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  const j = await r.json().catch(() => ({error: r.statusText}));
+  if (!r.ok || j.error) throw new Error(j.error || r.statusText);
+  return j;
+}
+
+// ---------------- tabs
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => showTab(b.dataset.v));
+function showTab(v) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  document.querySelectorAll('.view').forEach(x => x.classList.toggle('on', x.id === 'v-' + v));
+  if (v === 'results') loadRun(curRun);
+  if (v === 'screen') msEnter();
+  if (v !== 'screen') { const vv = $('msvideo'); if (vv && !vv.paused) vv.pause(); }
+  if (v === 'manual') refreshManual();
+  if (v === 'guide') loadDoc(curDoc);
+}
+
+// ---------------- state
+async function refresh() {
+  try { S = await api('/api/state'); } catch (e) { toast('Launcher not reachable: ' + e.message, true); return; }
+  $('ffmpeg').textContent = S.ffmpeg ? 'ffmpeg ✓ (fast clips)' : 'ffmpeg not found — clips via OpenCV';
+  $('ffmpeg').className = 'pill ' + (S.ffmpeg ? 'ok' : 'warn');
+  const run = S.jobs.filter(j => j.status === 'running');
+  $('running').textContent = run.length ? run.length + ' job' + (run.length>1?'s':'') + ' running' : 'idle';
+  $('running').className = 'pill ' + (run.length ? 'run' : '');
+  $('stfile').textContent = S.storage_file;
+  renderLibs(); renderVideos(); renderJobs();
+  if (selVid) { const v = S.videos.find(x => x.id === selVid); if (v) fillSel(v, true); }
+  fillRunSel();
+}
+function renderLibs() {
+  $('libs').innerHTML = S.libraries.map(l => `<div class="libbox ${l.exists?'':'missing'}">
+    <div style="display:flex;align-items:center;gap:6px"><span class="n">${esc(l.name)}</span>${l.primary?'<span class="tag ok">new videos</span>':''}${S.archive===l.name?'<span class="tag">archive</span>':''}
+      <span style="flex:1"></span>${l.exists?`<button class="b sm" onclick="openFolder('${esc(l.name)}')">Open</button>`:''}</div>
+    <div class="p">${esc(l.configured)}</div>
+    <div class="m">${l.exists ? `<span>${l.n_videos} video${l.n_videos===1?'':'s'} · ${l.size_gb} GB</span><span>${l.free_gb ?? '?'} GB free</span>` : '<span>not connected / not found</span>'}${l.note?`<span>${esc(l.note)}</span>`:''}</div></div>`).join('');
+  const p = S.libraries.find(l => l.primary); $('droplib').textContent = p ? p.name : 'Local';
+}
+function renderVideos() {
+  if (!S.videos.length) { $('videos').innerHTML = '<div class="empty" style="padding:16px">No recording yet.</div>'; return; }
+  $('videos').innerHTML = S.videos.map(v => `<button class="vid ${v.id===selVid?'sel':''}" onclick="selectVideo('${v.id}')">
+    <div class="nm">${esc(v.name)}</div>
+    <div class="meta"><span>${esc(v.library)}</span>${v.size_mb!=null?`<span>${v.size_mb>=1000?(v.size_mb/1000).toFixed(2)+' GB':Math.round(v.size_mb)+' MB'}</span>`:''}
+    ${v.cloud_only?'<span class="tag cloud">in the cloud</span>':''}${v.runs.length?`<span class="tag ok">analysed ×${v.runs.length}</span>`:''}${v.setup?'<span class="tag">setup ✓</span>':''}</div></button>`).join('');
+}
+function selectVideo(id) {
+  selVid = id; const v = S.videos.find(x => x.id === id);
+  renderVideos(); fillSel(v, false); showTab('analyse');
+}
+function opt(list, val, extra) { return (extra||[]).concat(list.map(x => [x, x])).map(([v, l]) => `<option value="${esc(v)}" ${v===val?'selected':''}>${esc(l)}</option>`).join(''); }
+function fillSel(v, keep) {
+  $('nosel').style.display = 'none'; $('sel').style.display = 'block';
+  $('s-name').textContent = v.name;
+  $('s-meta').innerHTML = `${esc(v.library)} · ${esc(v.rel)}${v.size_mb!=null?' · '+Math.round(v.size_mb)+' MB':''}${v.cloud_only?' · <b>in the cloud</b>: downloaded when the analysis opens it':''}`
+    + (v.runs.length ? ` · runs: ${v.runs.map(r => `<a href="#" onclick="curRun='${esc(r)}';showTab('results');return false">${esc(r)}</a>`).join(', ')}` : '');
+  $('s-archive').style.display = S.archive && v.library !== S.archive ? '' : 'none';
+  $('s-archive').onclick = () => archiveVideo(v);
+  $('s-shortcut').onclick = async () => {
+    try { const r = await api('/api/shortcut', {video_id: v.id, config: $('cfg').value, setup: $('setup').value,
+      run: $('run').value.replace(/^outputs\//, ''), start: $('sc-start').checked});
+      toast('Shortcut created: ' + r.path.split('/').pop() + ' (on the Desktop)'); } catch (e) { toast(e.message, true); } };
+  $('s-results').style.display = v.runs.length ? '' : 'none';
+  $('s-results').onclick = () => { curRun = v.runs[0]; showTab('results'); };
+  const p = prefs[v.id] || {};
+  if (!keep) {
+    const stem = v.name.replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9_.-]+/g, '_');
+    $('cfg').innerHTML = opt(S.configs, p.config || v.config || '', [['', '(defaults — configs/default.yaml values)']]);
+    const newSetup = 'configs/match_setup_' + stem + '.json';
+    const setups = S.setups.includes(newSetup) ? S.setups : S.setups.concat([newSetup]);
+    $('setup').innerHTML = opt(setups, p.setup ?? v.setup ?? '', [['', '(none — automatic only)']]).replace(`>${newSetup}<`, `>${newSetup} (new)<`);
+    $('run').value = p.run || (v.runs[0] || stem);
+  }
+  ['st1','st2','st3'].forEach(s => $(s).classList.remove('done'));
+  if (v.setup) $('st1').classList.add('done');
+  const r = S.runs.find(x => x.name === $('run').value);
+  if (r && r.has_report) $('st2').classList.add('done');
+  if (r && r.has_review) $('st3').classList.add('done');
+  preview();
+}
+['cfg','setup','run','quick','qframes','force','speed'].forEach(id => $(id).addEventListener('change', () => {
+  if (selVid) { prefs[selVid] = {config: $('cfg').value, setup: $('setup').value, run: $('run').value}; savePrefs(); }
+  preview();
+}));
+function req(kind) {
+  return {kind, video_id: selVid, config: $('cfg').value, setup: $('setup').value, run: $('run').value.replace(/^outputs\//, ''),
+          max_frames: $('quick').checked ? +$('qframes').value : null, force: $('force').checked, speed: $('speed').value};
+}
+function estText(e) {
+  if (!e || e.error) return '';
+  const h = e.hours != null ? (e.hours >= 1 ? `≈ ${Math.floor(e.hours)} h ${String(Math.round((e.hours % 1) * 60)).padStart(2, '0')} min` : `≈ ${Math.max(1, Math.round(e.hours * 60))} min`) : null;
+  return `<b>${esc(e.preset)}</b>: ${esc(e.note)}.` + (e.minutes ? ` ${Math.round(e.minutes)} min of video` + (e.frames ? ` → ${e.frames.toLocaleString()} analysed frames` : '') : '') +
+    (h ? ` · <b>${h}</b> at ${e.fps} fps (measured on run <i>${esc(e.measured_on)}</i>)` : ' · time: run a quick test once to measure the speed of this computer');
+}
+async function preview() {
+  try { const p = await api('/api/preview', req('analyse')); $('cmd-analyse').textContent = p.command; $('est-analyse').innerHTML = estText(p.estimate); }
+  catch (e) { $('cmd-analyse').textContent = e.message; }
+}
+
+// ---------------- jobs
+async function startJob(body) {
+  try {
+    const j = await api('/api/jobs', body);
+    toast('Started: ' + j.title);
+    watch(j.id, body.kind === 'synthetic' || body.kind === 'tests' ? 'jobs' : null);
+    refresh();
+    return j;
+  } catch (e) { toast(e.message, true); }
+}
+// ---------------- manual decisions (setup / review mounted in the launcher at /m/)
+async function openManual(mode) {
+  const body = Object.assign(req(mode), {mode});
+  if (mode === 'review' && !body.run) { toast('Choose the output folder of a processed match', true); return; }
+  try {
+    const r = await api('/api/manual', body);
+    $('mframe').src = '/m/?n=' + Date.now();
+    showTab('manual'); renderManualInfo(r);
+    toast((mode === 'setup' ? 'Setup' : 'Review') + ' opened — everything is saved as you go');
+  } catch (e) { toast(e.message, true); }
+}
+async function refreshManual() { try { renderManualInfo(await api('/api/manual')); } catch (e) {} }
+function renderManualInfo(m) {
+  if (!m || (!m.open && !m.ok)) return;
+  $('minfo').innerHTML = `<b>${m.mode === 'setup' ? 'Setup' : 'Review'}</b> · ${esc(m.video)} · saved to <code>${esc(m.mode === 'review' ? 'outputs/' + m.run + '/review.json' : m.setup)}</code>`
+    + (m.config ? ` · config <code>${esc(m.config)}</code>` : '')
+    + (m.mode === 'setup' ? ' — then <b>Process the video</b> (Analyse, step 2)' : ' — then apply it with the button on the right');
+  $('mapply').style.display = m.mode === 'review' ? '' : 'none';
+  if (m.mode === 'review' && m.run) $('mapply').onclick = () => startJob(Object.assign(req('analytics'), {run: m.run, config: m.config || $('cfg').value, setup: m.setup || $('setup').value}));
+}
+
+function watch(id, where) {
+  watchJob = id; logNext = 0;
+  const box = where === 'jobs' ? $('jobbox2') : ($('sel').style.display === 'none' ? $('jobbox2') : $('jobbox'));
+  [$('jobbox'), $('jobbox2')].forEach(b => { if (b !== box) b.style.display = 'none'; });
+  box.style.display = 'block';
+  box.innerHTML = `<div class="jobhead"><span class="ttl" id="jt"></span><span class="st" id="jst"></span><span class="note" id="jel"></span>
+    <button class="b sm blue" id="jlive" style="display:none">● Watch live</button><button class="b sm" id="jopen" style="display:none">Open UI</button><button class="b sm" id="jres" style="display:none">Results</button><button class="b sm danger" id="jstop">Stop</button></div>
+    <div class="bar" id="jbar" style="display:none"><div></div></div><pre class="log" id="jlog"></pre>`;
+  if (where === 'jobs') showTab('jobs');
+  setTimeout(() => box.scrollIntoView({behavior: 'smooth', block: 'nearest'}), 50);
+  clearInterval(logTimer); pollLog(); logTimer = setInterval(pollLog, 1000);
+}
+async function pollLog() {
+  if (!watchJob) return;
+  let l; try { l = await api(`/api/jobs/${watchJob}?since=${logNext}`); } catch (e) { clearInterval(logTimer); return; }
+  const j = l.job, pre = $('jlog'); if (!pre) return;
+  const atEnd = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 30;
+  if (l.lines.length) { pre.textContent += (logNext ? '\n' : '') + l.lines.join('\n'); logNext = l.next; if (atEnd) pre.scrollTop = pre.scrollHeight; }
+  $('jt').textContent = j.title; $('jst').textContent = j.status; $('jst').className = 'st ' + j.status;
+  $('jel').textContent = fmtDur(j.elapsed) + (j.progress != null && j.status === 'running' && j.progress > 0.01 ? ` · ${Math.round(100*j.progress)} % · ~${fmtDur(j.elapsed*(1-j.progress)/j.progress)} left` : '');
+  if (j.progress != null) { $('jbar').style.display = 'block'; $('jbar').firstElementChild.style.width = (100*j.progress) + '%'; }
+  $('jstop').style.display = j.status === 'running' ? '' : 'none';
+  $('jstop').onclick = async () => { await api(`/api/jobs/${j.id}/stop`, {}); toast('Stopped'); };
+  $('jopen').style.display = j.url && j.status === 'running' ? '' : 'none';
+  $('jlive').style.display = j.kind === 'analyse' && j.status === 'running' ? '' : 'none';
+  $('jlive').onclick = () => { msRun = j.run; msMode = 'live'; showTab('screen'); };
+  $('jopen').onclick = () => window.open(j.url, '_blank');
+  const hasRes = j.run && j.status === 'done' && ['analyse','analytics','repair','synthetic','clips'].includes(j.kind);
+  $('jres').style.display = hasRes ? '' : 'none';
+  $('jres').onclick = () => { curRun = j.run; showTab('results'); };
+  if (j.status !== 'running') {
+    clearInterval(logTimer);
+    if (j.status === 'done' && hasRes && !pollLog.done?.[j.id]) { (pollLog.done ||= {})[j.id] = 1; toast('Finished: ' + j.title); refresh(); if (curRun === j.run) loadRun(j.run); }
+  }
+}
+function renderJobs() {
+  $('jobs').innerHTML = '<tr><th>job</th><th>status</th><th>time</th><th>output</th></tr>' + (S.jobs.length ? S.jobs.map(j =>
+    `<tr onclick="watch('${j.id}','jobs')"><td>${esc(j.title)}<div class="note"><code>${esc(j.command)}</code></div></td><td><span class="st ${j.status}">${j.status}${j.progress!=null&&j.status==='running'?' '+Math.round(100*j.progress)+' %':''}</span></td>
+     <td class="note">${new Date(j.started*1000).toLocaleTimeString()} · ${fmtDur(j.elapsed)}</td><td>${j.run?esc(j.run):''}</td></tr>`).join('')
+    : '<tr><td colspan="4" class="note">No job started in this session.</td></tr>');
+}
+async function openFolder(what) { try { await api('/api/open', {what}); } catch (e) { toast(e.message, true); } }
+async function archiveVideo(v) {
+  if (!confirm(`Move ${v.name} to the "${S.archive}" library? Its analyses keep working (videos are found by name).`)) return;
+  try { await api('/api/archive', {video_id: v.id}); toast('Moved to ' + S.archive); refresh(); } catch (e) { toast(e.message, true); }
+}
+
+// ---------------- upload
+const drop = $('drop');
+drop.onclick = e => { if (e.target.tagName !== 'INPUT') $('file').click(); };
+$('file').onchange = e => { if (e.target.files[0]) upload(e.target.files[0]); };
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) upload(f); });
+function upload(f) {
+  const x = new XMLHttpRequest(); const bar = $('upbar'); bar.style.display = 'block';
+  x.open('POST', '/api/upload?name=' + encodeURIComponent(f.name));
+  x.upload.onprogress = e => { if (e.lengthComputable) bar.firstElementChild.style.width = (100*e.loaded/e.total) + '%'; };
+  x.onload = () => { bar.style.display = 'none'; let j = {}; try { j = JSON.parse(x.responseText); } catch (e) {}
+    if (x.status >= 400 || j.error) toast(j.error || 'upload failed', true); else { toast(`Added ${f.name} to ${j.library}`); refresh(); } };
+  x.onerror = () => { bar.style.display = 'none'; toast('upload failed', true); };
+  x.send(f);
+}
+
+// ---------------- results
+function fillRunSel() {
+  const runs = S.runs.filter(r => r.has_events); $('noruns').style.display = runs.length ? 'none' : 'block'; $('resbody').style.display = runs.length ? '' : 'none';
+  if (!curRun || !runs.find(r => r.name === curRun)) curRun = runs[0]?.name || null;
+  $('runsel').innerHTML = runs.map(r => `<option value="${esc(r.name)}" ${r.name===curRun?'selected':''}>${esc(r.name)}${r.n_flagged?` — ${r.n_flagged} ⚑`:''}${r.video_found?'':' (video not found)'}</option>`).join('');
+}
+$('runsel').onchange = e => loadRun(e.target.value);
+async function loadRun(name) {
+  if (!name) return;
+  curRun = name;
+  try { R = await api('/api/run/' + encodeURIComponent(name)); } catch (e) { toast(e.message, true); return; }
+  const t = R.teams || ['Team A', 'Team B'];
+  $('score').innerHTML = R.score ? `<span class="dot" style="background:var(--t0)"></span>${esc(t[0])} ${R.score[0]} – ${R.score[1]} ${esc(t[1])}<span class="dot" style="background:var(--t1);margin:0 0 0 6px"></span>` : '';
+  $('ft0').textContent = t[0]; $('ft1').textContent = t[1];
+  $('btn-report').disabled = !R.has_report; $('btn-report').onclick = () => window.open('/runs/' + encodeURIComponent(name) + '/report.html', '_blank');
+  $('btn-folder').onclick = () => openFolder('run:' + name);
+  $('btn-clips').disabled = $('btn-clipsall').disabled = !R.video_id;
+  $('btn-clips').onclick = () => startJob({kind:'clips', run:name, video_id:R.video_id});
+  $('btn-clipsall').onclick = () => startJob({kind:'clips', run:name, video_id:R.video_id, all:true});
+  const vp = $('vplayer');
+  if (R.video_id) { const src = '/media/video/' + R.video_id; if (!vp.src.endsWith(src)) vp.src = src; }
+  else { vp.removeAttribute('src'); vp.load(); $('now').textContent = 'Video not found in the libraries — opportunities are listed, playback is off.'; }
+  renderOpps(); renderKM();
+}
+function visibleOpps() {
+  return (R?.opportunities || []).filter(o => (oFilter === 'all' || o.flag) && (tFilter < 0 || o.team === tFilter));
+}
+function renderOpps() {
+  const L = visibleOpps(), t = R.teams || ['A','B'];
+  const all = R.opportunities || [];
+  document.querySelector('[data-f=flag]').textContent = `⚑ Flagged (${all.filter(o=>o.flag).length})`;
+  document.querySelector('[data-f=all]').textContent = `All (${all.length})`;
+  if (!L.length) { $('olist').innerHTML = `<div class="empty">${all.length ? 'Nothing for this filter.' : 'No opportunity detected in this run.'}</div>`; return; }
+  $('olist').innerHTML = L.map(o => `<button class="opp ${o.category==='Goal'?'goal':''} ${curOpp===o.opp_id?'cur':''}" onclick="play(${o.opp_id})">
+    <span class="fl">${o.flag?'⚑':''}</span>
+    <span class="ck">${esc(o.clock)}<small>${esc(o.video_time)}</small></span>
+    <span><span class="cat"><span class="dot" style="background:var(--t${o.team})"></span>${esc(o.category)}${o.checked?' ✓':''}</span>
+      <div class="ds">${esc(o.description.replace(/^[^—]+— /, ''))}</div>
+      ${o.clip?`<a class="note" href="/runs/${encodeURIComponent(R.name)}/clips/opportunities/${encodeURIComponent(o.clip_file)}" target="_blank" onclick="event.stopPropagation()">▶ clip file</a>`:''}</span>
+    <span class="xg">${o.chance_xg!=null?o.chance_xg.toFixed(2):'–'}<small>xG</small></span></button>`).join('');
+}
+document.querySelectorAll('#filters .chipb').forEach(c => c.onclick = () => {
+  if (c.dataset.f) { oFilter = c.dataset.f; document.querySelectorAll('[data-f]').forEach(x => x.classList.toggle('on', x === c)); }
+  else { tFilter = +c.dataset.t; document.querySelectorAll('[data-t]').forEach(x => x.classList.toggle('on', x === c)); }
+  renderOpps();
+});
+function play(id) {
+  const o = R.opportunities.find(x => x.opp_id === id); if (!o) return;
+  curOpp = id; renderOpps();
+  const t = R.teams || ['A','B'];
+  $('now').innerHTML = `<b>${o.flag?'⚑ ':''}${esc(o.category)}</b> · ${esc(o.clock)} (${esc(o.video_time)}) · ${esc(t[o.team])}<div class="note">${esc(o.description)} — plays from ${fmtT(o.clip_start)} to ${fmtT(o.clip_end)}</div>`;
+  const v = $('vplayer'); if (!R.video_id) return;
+  v.currentTime = o.clip_start; v.play().catch(() => {});
+  v._stopAt = o.clip_end;
+}
+$('vplayer').addEventListener('timeupdate', e => { const v = e.target; if (v._stopAt && v.currentTime >= v._stopAt) { v.pause(); v._stopAt = null; } });
+$('vplayer').addEventListener('seeking', e => { const v = e.target; if (v._stopAt && (v.currentTime > v._stopAt + 1 || v.currentTime < v._stopAt - 60)) v._stopAt = null; });
+function step(d) {
+  const L = (R?.opportunities || []).filter(o => o.flag && (tFilter < 0 || o.team === tFilter)); if (!L.length) return;
+  let i = L.findIndex(o => o.opp_id === curOpp);
+  i = i < 0 ? (d > 0 ? 0 : L.length - 1) : Math.min(L.length - 1, Math.max(0, i + d));
+  play(L[i].opp_id);
+}
+$('prev').onclick = () => step(-1); $('next').onclick = () => step(1);
+$('toscreen').onclick = () => { const v = $('vplayer'); $('vplayer').pause(); msRun = curRun; msMode = 'replay'; msSeekTo = v.currentTime || 0; showTab('screen'); };
+document.addEventListener('keydown', e => {
+  if (!$('v-results').classList.contains('on') || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+  if (e.key === 'n' || e.key === 'ArrowDown') { e.preventDefault(); step(1); }
+  if (e.key === 'p' || e.key === 'ArrowUp') { e.preventDefault(); step(-1); }
+});
+function renderKM() {
+  const t = R.teams || ['A','B'];
+  if (!R.key_metrics.length) { $('kmetrics').textContent = 'No graded metrics in this run.'; return; }
+  const f = v => v == null ? '–' : Number.isInteger(v) ? v : v.toFixed(Math.abs(v) < 10 ? 2 : 1);
+  $('kmetrics').innerHTML = `<table class="km"><tr><th></th><th>${esc(t[0])}</th><th>${esc(t[1])}</th><th></th></tr>` +
+    R.key_metrics.map(k => `<tr><td>${esc(k.label)}</td><td>${f(k.values[0])}</td><td>${f(k.values[1])}</td><td><span class="cf ${k.confidence}">${k.confidence}</span></td></tr>`).join('') + '</table>';
+}
+
+// ================= MATCH SCREEN =================
+// Live: the frame the pipeline is analysing right now, drawn by the pipeline (outputs/<run>/live/latest.jpg).
+// Replay: the video plays in the browser and the analysis is drawn on top from the run's tables.
+let msRun = null, msMode = 'replay', msInfo = null, msWin = null, msLoading = false, msSeekTo = null, msLiveT = null, msLastUpd = 0;
+const TOG = {lines: true, boxes: true, ids: false, ball: true, events: true, mini: true, ignored: false};
+let TCOL = ['#4a90e2', '#ef8a3c']; const GREY = '#b8b8b8', TCOL0 = ['#4a90e2', '#ef8a3c'];
+const EVLABEL = {goal: 'GOAL', shot: 'SHOT', penalty: 'PENALTY', corner: 'CORNER', free_kick: 'FREE KICK', throw_in: 'THROW-IN',
+  goal_kick: 'GOAL KICK', kickoff: 'KICK-OFF', foul_proxy: 'FOUL (proxy)', offside_suspected: 'OFFSIDE?', interception: 'INTERCEPTION',
+  ball_recovery: 'RECOVERY', yellow: 'YELLOW CARD', red: 'RED CARD', sub: 'SUBSTITUTION', pass: 'PASS'};
+const BANNER = new Set(['goal', 'shot', 'penalty', 'corner', 'free_kick', 'kickoff', 'foul_proxy', 'offside_suspected', 'yellow', 'red', 'goal_kick', 'throw_in']);
+document.querySelectorAll('#tgl input').forEach(i => { i.checked = TOG[i.dataset.k]; i.onchange = () => { TOG[i.dataset.k] = i.checked; msDraw(); }; });
+document.querySelectorAll('[data-ms]').forEach(c => c.onclick = () => { msMode = c.dataset.ms; msEnter(); });
+$('msrun').onchange = e => { msRun = e.target.value; msInfo = null; msWin = null; msEnter(); };
+
+function msFillRuns() {
+  const names = new Set(S.runs.map(r => r.name)); S.jobs.filter(j => j.run && j.kind === 'analyse').forEach(j => names.add(j.run));
+  const list = [...names];
+  if (!msRun || !names.has(msRun)) {
+    const live = S.jobs.find(j => j.kind === 'analyse' && j.status === 'running');
+    msRun = live ? live.run : (curRun || list[0] || null);
+  }
+  $('msrun').innerHTML = list.map(n => { const r = S.runs.find(x => x.name === n); const lj = S.jobs.find(j => j.run === n && j.kind === 'analyse' && j.status === 'running');
+    return `<option value="${esc(n)}" ${n === msRun ? 'selected' : ''}>${esc(n)}${lj ? ' — ● processing' : ''}${r && !r.has_tracks ? ' (not processed)' : ''}</option>`; }).join('');
+}
+async function msEnter() {
+  if (!S) return;
+  msFillRuns();
+  document.querySelectorAll('[data-ms]').forEach(x => x.classList.toggle('on', x.dataset.ms === msMode));
+  const live = msMode === 'live';
+  $('replayctl').style.display = live ? 'none' : '';
+  $('liveimg').style.display = live ? 'block' : 'none';
+  $('msvideo').style.display = live ? 'none' : 'block';
+  $('ov').style.display = live ? 'none' : 'block';
+  $('livebar').style.display = live ? 'block' : 'none';
+  $('sidetitle').textContent = live ? 'Processing' : 'Now';
+  if (!msRun) { msMsg('No match yet: process a recording (Analyse, step 2).'); return; }
+  if (live) { msMsg(''); msLivePoll(); return; }
+  if (!msInfo || msInfo.name !== msRun) {
+    msMsg('Loading the analysis…');
+    try { msInfo = await api('/api/overlay/' + encodeURIComponent(msRun)); }
+    catch (e) { msInfo = null; msMsg('This match has no tracking yet — watch it on <b>Live</b> while it is processed.'); return; }
+    msWin = null;
+    const [w, h] = msInfo.size; $('stage').style.aspectRatio = (w && h) ? `${w} / ${h}` : '16 / 9';
+    const ov = $('ov'); ov.width = w || 640; ov.height = h || 360;
+    $('lg0').textContent = msInfo.team_names[0]; $('lg1').textContent = msInfo.team_names[1];
+    TCOL = msInfo.team_colors || TCOL0;                       // shirt colours clicked in the setup
+    document.querySelectorAll('.legend2 .sw2')[0].style.background = TCOL[0]; document.querySelectorAll('.legend2 .sw2')[1].style.background = TCOL[1];
+    const v = $('msvideo');
+    if (msInfo.video_id) { v.src = '/media/video/' + msInfo.video_id; }
+    else { v.removeAttribute('src'); v.load(); }
+    v.onloadedmetadata = () => { const t = msSeekTo != null ? msSeekTo : msInfo.t_range[0]; msSeekTo = null; v.currentTime = t; msTimeline(); };
+    msEvList();
+  } else if (msSeekTo != null) { $('msvideo').currentTime = msSeekTo; msSeekTo = null; }
+  msMsg(msInfo.video_id ? '' : 'Video not found in the libraries — overlays only.');
+  msTimeline(); msDraw();
+}
+function msMsg(h) { $('msmsg').innerHTML = h; $('msmsg').style.display = h ? 'grid' : 'none'; }
+
+// ---- live
+async function msLivePoll() {
+  if (msMode !== 'live' || !$('v-screen').classList.contains('on')) return;
+  let st = null; try { st = await api('/api/live/' + encodeURIComponent(msRun)); } catch (e) {}
+  if (st) {
+    if (st.has_image && st.updated !== msLastUpd) { msLastUpd = st.updated; $('liveimg').src = '/runs/' + encodeURIComponent(msRun) + '/live/latest.jpg?u=' + st.updated; }
+    if (!st.has_image) msMsg(st.status ? esc(st.status) : 'Waiting for the first analysed frame… (start the analysis in the Analyse tab)'); else msMsg('');
+    const kv = [['status', st.status || '—'], ['video time', st.t != null ? fmtT(st.t) : '—'], ['frames', st.n ?? '—'],
+      ['speed', st.fps ? st.fps + ' frames/s' : '—'], ['progress', st.progress != null ? Math.round(100 * st.progress) + ' %' : '—'],
+      ['time left', st.eta_s != null ? fmtDur(st.eta_s) : '—'], ['people', st.n_people ?? '—'], ['ball candidates', st.n_ball ?? '—'],
+      ['camera', st.camera ? `${st.camera.src || ''} · line error ${st.camera.line_err ?? '–'} px` : (st.has_calibration === false ? 'no calibration' : '—')]];
+    $('nowkv').innerHTML = kv.map(([k, v]) => `<span>${k}</span><span>${esc(v)}</span>`).join('');
+    $('livebar').firstElementChild.style.width = (100 * (st.progress || 0)) + '%';
+    $('evtitle').textContent = 'Log';
+    if (st.job) { try { const l = await api(`/api/jobs/${st.job.id}?since=${Math.max(0, st.job.n_lines - 14)}`); $('evlist').innerHTML = l.lines.map(x => `<div style="font-family:var(--mono);cursor:default">${esc(x)}</div>`).join(''); } catch (e) {} }
+    else $('evlist').innerHTML = `<div style="cursor:default">${st.status === 'done' ? 'Finished — switch to <b>Replay</b> to watch the whole analysis.' : 'No job running for this match.'}</div>`;
+    msMiniLive(st);
+  }
+  clearTimeout(msLivePoll._t); msLivePoll._t = setTimeout(msLivePoll, 1000);
+}
+function msMiniLive() { const c = $('mini'), g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); g.fillStyle = '#9aa1a9'; g.font = '12px sans-serif'; g.fillText('The minimap is drawn inside the live frame.', 12, 24); }
+
+// ---- replay data
+function msCur() { return $('msvideo').currentTime || 0; }
+async function msEnsure(t) {
+  if (!msInfo || msLoading) return;
+  if (msWin && t >= msWin.t0 && t <= msWin.t1 - 3) return;
+  msLoading = true;
+  try { const w = await api(`/api/overlay/${encodeURIComponent(msRun)}/window?t0=${Math.max(0, t - 4).toFixed(2)}&t1=${(t + 40).toFixed(2)}`); if (w.frames) msWin = w; }
+  catch (e) {} finally { msLoading = false; }
+}
+function msFrameAt(t) {
+  if (!msWin || !msWin.frames.length) return null;
+  const F = msWin.frames; let lo = 0, hi = F.length - 1;
+  while (lo < hi) { const m = (lo + hi + 1) >> 1; if (F[m].t <= t + 0.02) lo = m; else hi = m - 1; }
+  const f = F[lo]; const step = 1 / (msInfo.analysis_fps || 5);
+  return Math.abs(f.t - t) <= 1.5 * step + 0.05 ? f : null;
+}
+function proj(H, x, y) { const w = H[2][0] * x + H[2][1] * y + H[2][2]; if (w <= 1e-9) return null; return [(H[0][0] * x + H[0][1] * y + H[0][2]) / w, (H[1][0] * x + H[1][1] * y + H[1][2]) / w]; }
+
+// ---- replay drawing
+function msDraw() {
+  if (msMode !== 'replay' || !msInfo) return;
+  const t = msCur(); msEnsure(t);
+  const c = $('ov'), g = c.getContext('2d'), W = c.width, Hh = c.height;
+  g.clearRect(0, 0, W, Hh);
+  const f = msFrameAt(t);
+  const lw = Math.max(1, W / 640);
+  if (TOG.ignored) { g.fillStyle = 'rgba(0,0,0,.45)'; (msInfo.ignore_regions || []).forEach(r => g.fillRect(r[0], r[1], r[2] - r[0], r[3] - r[1])); }
+  if (f) {
+    if (TOG.lines && f.H) {
+      g.strokeStyle = f.ok ? 'rgba(255,0,255,.85)' : 'rgba(255,80,80,.6)'; g.lineWidth = lw;
+      msInfo.lines.forEach(ln => { g.beginPath(); let pen = false;
+        for (const [x, y] of ln) { const q = proj(f.H, x, y); if (!q || Math.abs(q[0]) > 4 * W || Math.abs(q[1]) > 4 * Hh) { pen = false; continue; } pen ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); pen = true; }
+        g.stroke(); });
+    }
+    if (TOG.boxes) {
+      g.font = `${Math.round(9 * lw)}px sans-serif`;
+      f.b.forEach((b, k) => { const cls = f.c[k]; const out = cls === 'outside';
+        const col = out ? 'rgba(150,150,150,.5)' : cls === 'referee' ? '#111' : (b[4] === 0 || b[4] === 1) ? TCOL[b[4]] : GREY;
+        g.strokeStyle = col; g.lineWidth = cls === 'goalkeeper' ? 2 * lw : lw; g.setLineDash(out ? [3, 3] : []);
+        g.strokeRect(b[0], b[1], b[2] - b[0], b[3] - b[1]); g.setLineDash([]);
+        const lab = (cls === 'goalkeeper' ? 'GK ' : cls === 'referee' ? 'REF ' : '') + (TOG.ids ? '#' + b[5] : '');
+        if (lab.trim()) { g.fillStyle = cls === 'referee' ? '#ffe14d' : col; g.fillText(lab.trim(), b[0], Math.max(9, b[1] - 2)); } });
+    }
+    if (TOG.ball && f.ball && f.H) { const q = proj(f.H, f.ball[0], f.ball[1]); if (q) { g.strokeStyle = '#ffe14d'; g.lineWidth = 1.5 * lw; g.setLineDash(f.ball[2] ? [2, 2] : []); g.beginPath(); g.arc(q[0], q[1], 6 * lw, 0, 7); g.stroke(); g.setLineDash([]); } }
+    if (!f.ok) { g.fillStyle = 'rgba(160,30,30,.75)'; g.fillRect(0, Hh - 18 * lw, W, 18 * lw); g.fillStyle = '#fff'; g.font = `${Math.round(10 * lw)}px sans-serif`; g.fillText('camera calibration lost here — positions not used by the statistics', 6 * lw, Hh - 5 * lw); }
+    if (TOG.mini) msMiniDraw(g, f, W - 150 * lw - 6, 6, 150 * lw);
+  } else if (msWin) { g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, 0, W, 18 * lw); g.fillStyle = '#ddd'; g.font = `${Math.round(10 * lw)}px sans-serif`; g.fillText('not analysed at this time (outside the processed stretch)', 6 * lw, 13 * lw); }
+  if (TOG.events) msBanner(g, t, W, lw);
+  const side = $('mini'); const sg = side.getContext('2d'); sg.clearRect(0, 0, side.width, side.height); msMiniDraw(sg, f, 0, 0, side.width, t);
+  msNow(t, f);
+  $('mstime').textContent = fmtT(t) + (msInfo.periods ? '  ·  ' + msClock(t) : '');
+  msTlCursor(t);
+}
+function msMiniDraw(g, f, x0, y0, w, t) {
+  const [L, Wp] = msInfo.pitch, s = w / (L + 6), h = (Wp + 6) * s, to = (x, y) => [x0 + (x + 3) * s, y0 + (y + 3) * s];
+  g.fillStyle = 'rgba(43,95,51,.88)'; g.fillRect(x0, y0, w, h); g.strokeStyle = 'rgba(235,235,235,.85)'; g.lineWidth = 1;
+  msInfo.lines.forEach(ln => { g.beginPath(); ln.forEach(([x, y], i) => { const [a, b] = to(x, y); i ? g.lineTo(a, b) : g.moveTo(a, b); }); g.stroke(); });
+  if (t != null && msInfo.events) {          // passes / shots of the last 4 s as arrows
+    msInfo.events.filter(e => (e.type === 'pass' || e.type === 'shot') && e.t <= t && e.t > t - 4 && e.x_end != null).forEach(e => {
+      const [a, b] = to(e.x, e.y), [c, d] = to(e.x_end, e.y_end); g.strokeStyle = e.type === 'shot' ? '#ff4d4d' : 'rgba(255,255,255,.7)';
+      g.lineWidth = e.type === 'shot' ? 2 : 1; g.beginPath(); g.moveTo(a, b); g.lineTo(c, d); g.stroke(); });
+  }
+  if (!f) return;
+  f.p.forEach(([x, y, tm, c]) => { const [a, b] = to(x, y); g.fillStyle = c === 'r' ? '#111' : (tm === 0 || tm === 1) ? TCOL[tm] : GREY; g.beginPath(); g.arc(a, b, Math.max(2, w / 75), 0, 7); g.fill(); });
+  if (f.ball) { const [a, b] = to(f.ball[0], f.ball[1]); g.fillStyle = '#ffe14d'; g.beginPath(); g.arc(a, b, Math.max(2, w / 90), 0, 7); g.fill(); }
+}
+function msBanner(g, t, W, lw) {
+  const ev = (msInfo.events || []).filter(e => BANNER.has(e.type) && t >= e.t - 0.6 && t <= e.t + 3.5);
+  if (!ev.length) return;
+  const e = ev[ev.length - 1]; const team = e.team === 0 || e.team === 1 ? msInfo.team_names[e.team] : '';
+  const txt = `${EVLABEL[e.type] || e.type}${team ? ' · ' + team : ''}${e.xg != null ? ' · xG ' + e.xg.toFixed(2) : ''}${e.outcome && e.type === 'shot' ? ' · ' + e.outcome.replace('_', ' ') : ''}`;
+  g.font = `bold ${Math.round(12 * lw)}px sans-serif`; const tw = g.measureText(txt).width + 16 * lw;
+  g.fillStyle = e.type === 'goal' ? 'rgba(31,138,76,.92)' : e.type === 'shot' ? 'rgba(200,60,40,.9)' : 'rgba(20,20,20,.8)';
+  g.fillRect((W - tw) / 2, 8 * lw, tw, 20 * lw); g.fillStyle = '#fff'; g.fillText(txt, (W - tw) / 2 + 8 * lw, 22 * lw);
+}
+function msClock(t) {
+  const P = msInfo.periods || []; for (let i = 0; i < P.length; i++) { const [a, b] = P[i];
+    if (t >= a - 1 && t <= b + 1) { const m = Math.max(0, (t - a) / 60); return m >= 45 ? `${45 * (i + 1)}+${Math.floor(m - 45) + 1}'` : `${Math.floor(45 * i + m) + 1}'`; } }
+  return 'not in play';
+}
+function msNow(t, f) {
+  const recent = (msInfo.events || []).filter(e => e.type !== 'pass' && e.t <= t && e.t > t - 20).slice(-1)[0];
+  const kv = [['video time', fmtT(t)], ['match clock', msClock(t)], ['analysed frame', f ? f.f : '—'],
+    ['people', f ? f.b.filter((b, k) => f.c[k] !== 'outside').length : '—'], ['ball', f ? (f.ball ? (f.ball[2] ? 'interpolated' : 'seen') : 'not found') : '—'],
+    ['camera', f ? (f.H ? (f.ok ? 'calibrated' : 'unreliable') : 'no pose') : '—'],
+    ['last event', recent ? `${EVLABEL[recent.type] || recent.type} ${fmtT(recent.t)}` : '—']];
+  $('nowkv').innerHTML = kv.map(([k, v]) => `<span>${k}</span><span>${esc(v)}</span>`).join('');
+}
+function msEvList() {
+  $('evtitle').textContent = 'Key events (click to jump)';
+  const ev = (msInfo.events || []).filter(e => ['goal', 'shot', 'penalty', 'corner', 'yellow', 'red'].includes(e.type));
+  const opp = (msInfo.opportunities || []).filter(o => o.flag);
+  const items = ev.map(e => ({t: e.t, h: `${fmtT(e.t)} · ${EVLABEL[e.type]} · ${esc(e.team >= 0 ? msInfo.team_names[e.team] : '?')}${e.xg != null ? ' · xG ' + e.xg.toFixed(2) : ''}`, c: e.type === 'goal' ? '#1f3a2a' : ''}));
+  $('evlist').innerHTML = items.length ? items.map(i => `<div data-t="${i.t}" style="${i.c ? 'background:' + i.c : ''}">${i.h}</div>`).join('') : '<div style="cursor:default">No shots, goals or set pieces in this run.</div>';
+  $('evlist').querySelectorAll('[data-t]').forEach(d => d.onclick = () => msSeek(+d.dataset.t - 4));
+}
+function msSeek(t) { const v = $('msvideo'); v.currentTime = Math.max(0, t); msDraw(); }
+
+// ---- timeline
+function msTimeline() {
+  if (!msInfo) return;
+  const c = $('tlc'), r = c.getBoundingClientRect(); c.width = Math.max(300, r.width * devicePixelRatio); c.height = 46 * devicePixelRatio;
+  const g = c.getContext('2d'), W = c.width, H = c.height, v = $('msvideo');
+  const T = (v.duration && isFinite(v.duration)) ? v.duration : Math.max(msInfo.t_range[1] + 60, 60);
+  msTimeline.T = T; const X = t => t / T * W;
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = '#2a2f35'; g.fillRect(0, H * 0.42, W, H * 0.16);
+  g.fillStyle = 'rgba(143,209,106,.55)'; g.fillRect(X(msInfo.t_range[0]), H * 0.42, Math.max(2, X(msInfo.t_range[1]) - X(msInfo.t_range[0])), H * 0.16);
+  (msInfo.periods || []).forEach(([a, b]) => { g.fillStyle = 'rgba(255,255,255,.07)'; g.fillRect(X(a), 0, X(b) - X(a), H); });
+  (msInfo.events || []).forEach(e => {
+    if (!['goal', 'shot', 'corner', 'penalty'].includes(e.type)) return;
+    const up = e.team !== 1; g.fillStyle = e.type === 'goal' ? '#4fbf7f' : (e.team === 0 || e.team === 1) ? TCOL[e.team] : GREY;
+    const hh = e.type === 'goal' ? H * 0.4 : e.type === 'shot' ? H * 0.3 : H * 0.16;
+    g.fillRect(X(e.t) - devicePixelRatio, up ? H * 0.42 - hh : H * 0.58, 2 * devicePixelRatio, hh);
+  });
+  msTimeline.base = g.getImageData(0, 0, W, H);
+}
+function msTlCursor(t) {
+  const c = $('tlc'), g = c.getContext('2d'); if (!msTimeline.base) return;
+  g.putImageData(msTimeline.base, 0, 0); const x = t / msTimeline.T * c.width; g.fillStyle = '#fff'; g.fillRect(x - devicePixelRatio, 0, 2 * devicePixelRatio, c.height);
+}
+$('tl').onclick = e => { const r = $('tl').getBoundingClientRect(); msSeek((e.clientX - r.left) / r.width * (msTimeline.T || 0)); };
+window.addEventListener('resize', () => { if ($('v-screen').classList.contains('on')) msTimeline(); });
+
+// ---- controls
+const msv = $('msvideo');
+$('msplay').onclick = () => { msv.paused ? msv.play().catch(() => {}) : msv.pause(); };
+msv.addEventListener('play', () => { $('msplay').textContent = '❚❚ Pause'; (function loop() { msDraw(); if (!msv.paused) requestAnimationFrame(loop); })(); });
+msv.addEventListener('pause', () => { $('msplay').textContent = '▶ Play'; msDraw(); });
+msv.addEventListener('seeked', () => msDraw());
+msv.addEventListener('durationchange', () => msTimeline());
+$('msback').onclick = () => msSeek(msCur() - 5); $('msfwd').onclick = () => msSeek(msCur() + 5);
+$('msrate').onchange = e => { msv.playbackRate = +e.target.value; };
+function msJumpEvent(d) {
+  const t = msCur(); const ev = (msInfo?.events || []).filter(e => ['goal', 'shot', 'penalty', 'corner'].includes(e.type)).map(e => e.t - 4);
+  const nx = d > 0 ? ev.find(x => x > t + 0.5) : [...ev].reverse().find(x => x < t - 0.5); if (nx != null) msSeek(nx);
+}
+$('msprevev').onclick = () => msJumpEvent(-1); $('msnextev').onclick = () => msJumpEvent(1);
+document.addEventListener('keydown', e => {
+  if (!$('v-screen').classList.contains('on') || msMode !== 'replay' || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+  if (e.key === ' ') { e.preventDefault(); $('msplay').click(); }
+  if (e.key === 'ArrowRight') { e.preventDefault(); msSeek(msCur() + 5); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); msSeek(msCur() - 5); }
+  if (e.key === 'n') msJumpEvent(1); if (e.key === 'p') msJumpEvent(-1);
+});
+
+// ================= GUIDE =================
+const DOCNAMES = {USER_GUIDE: 'User guide', README: 'README', STATS_RULEBOOK: 'Statistics rulebook', REPORT_GUIDE: 'Report guide',
+  MANUAL_VALIDATION: 'Manual validation', VIDEO_STORAGE: 'Video storage', RECORDING_PROFILE: 'Recording profile', SOTA_REVIEW: 'State of the art'};
+const DOCFILE = {'README.md': 'README', 'USER_GUIDE.md': 'USER_GUIDE', 'STATS_RULEBOOK.md': 'STATS_RULEBOOK', 'REPORT_GUIDE.md': 'REPORT_GUIDE',
+  'MANUAL_VALIDATION.md': 'MANUAL_VALIDATION', 'VIDEO_STORAGE.md': 'VIDEO_STORAGE', 'RECORDING_PROFILE.md': 'RECORDING_PROFILE', 'SOTA_REVIEW.md': 'SOTA_REVIEW'};
+let curDoc = 'USER_GUIDE';
+function renderDocSel() {
+  $('docsel').innerHTML = Object.entries(DOCNAMES).map(([k, n]) => `<span class="chipb ${k === curDoc ? 'on' : ''}" data-doc="${k}">${n}</span>`).join('');
+  $('docsel').querySelectorAll('[data-doc]').forEach(c => c.onclick = () => loadDoc(c.dataset.doc));
+}
+async function loadDoc(name, anchor) {
+  curDoc = name; renderDocSel();
+  try {
+    const d = await api('/api/doc/' + name);
+    const {html, toc} = mdRender(d.markdown);
+    $('md').innerHTML = html + `<p class="note" style="margin-top:24px">File: <code>${esc(d.path)}</code></p>`;
+    $('toc').innerHTML = toc.map(h => `<a href="#${h.id}" class="h${h.level}" data-id="${h.id}">${h.text}</a>`).join('');
+    $('toc').querySelectorAll('a').forEach(a => a.onclick = e => { e.preventDefault(); document.getElementById(a.dataset.id)?.scrollIntoView({behavior: 'smooth'}); });
+    $('md').querySelectorAll('a[data-doc]').forEach(a => a.onclick = e => { e.preventDefault(); loadDoc(a.dataset.doc, a.dataset.anchor); });
+    if (anchor) document.getElementById(anchor)?.scrollIntoView(); else $('work').scrollTop = 0;
+  } catch (e) { $('md').textContent = e.message; }
+}
+function mdInline(t) {
+  t = esc(t);
+  t = t.replace(/`([^`]+)`/g, (m, c) => `<code>${c}</code>`);
+  t = t.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\w)/g, '$1<i>$2</i>');
+  t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (m, txt, href) => {
+    const file = href.split('#')[0].split('/').pop(), anc = href.split('#')[1] || '';
+    if (DOCFILE[file]) return `<a href="#" data-doc="${DOCFILE[file]}" data-anchor="${anc}">${txt}</a>`;
+    if (/^https?:/.test(href)) return `<a href="${href}" target="_blank" rel="noopener">${txt}</a>`;
+    return `<code>${txt}</code>`;
+  });
+  t = t.replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
+  return t;
+}
+function mdRender(src) {
+  const L = src.replace(/\r/g, '').split('\n'); let i = 0, out = [], toc = [], used = {};
+  const slug = t => { let s = t.toLowerCase().replace(/<[^>]+>/g, '').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-') || 'h'; if (used[s]) s += '-' + (++used[s]); else used[s] = 1; return s; };
+  while (i < L.length) {
+    const l = L[i];
+    if (/^```/.test(l)) { const buf = []; i++; while (i < L.length && !/^```/.test(L[i])) buf.push(L[i++]); i++; out.push(`<pre><code>${esc(buf.join('\n'))}</code></pre>`); continue; }
+    const h = l.match(/^(#{1,4})\s+(.*)$/);
+    if (h) { const lv = h[1].length, txt = mdInline(h[2]), id = slug(h[2]); out.push(`<h${lv} id="${id}">${txt}</h${lv}>`); if (lv >= 2 && lv <= 3) toc.push({level: lv, id, text: txt.replace(/<[^>]+>/g, '')}); i++; continue; }
+    if (/^\s*(---|\*\*\*)\s*$/.test(l)) { out.push('<hr>'); i++; continue; }
+    if (/^\s*\|/.test(l) && i + 1 < L.length && /^\s*\|?\s*:?-{2,}/.test(L[i + 1])) {
+      const row = r => r.trim().replace(/^\|/, '').replace(/\|$/, '').split(/(?<!\\)\|/).map(c => mdInline(c.trim().replace(/\\\|/g, '|')));
+      const head = row(l); i += 2; const rows = [];
+      while (i < L.length && /^\s*\|/.test(L[i])) rows.push(row(L[i++]));
+      out.push(`<table><tr>${head.map(c => `<th>${c}</th>`).join('')}</tr>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</table>`); continue;
+    }
+    if (/^\s*([*-]|\d+\.)\s+/.test(l)) {
+      const items = [];
+      while (i < L.length && (/^\s*([*-]|\d+\.)\s+/.test(L[i]) || (/^\s{2,}\S/.test(L[i]) && items.length))) {
+        const m = L[i].match(/^(\s*)([*-]|\d+\.)\s+(.*)$/);
+        if (m) items.push({ind: m[1].length, tag: /\d/.test(m[2]) ? 'ol' : 'ul', text: m[3]});
+        else items[items.length - 1].text += ' ' + L[i].trim();          // continuation line of the item
+        i++;
+      }
+      const stack = []; let html = '';
+      items.forEach(it => {
+        while (stack.length && it.ind < stack[stack.length - 1].ind) html += `</li></${stack.pop().tag}>`;
+        if (!stack.length || it.ind > stack[stack.length - 1].ind) { stack.push({ind: it.ind, tag: it.tag}); html += `<${it.tag}><li>`; }
+        else html += '</li><li>';
+        html += mdInline(it.text);
+      });
+      while (stack.length) html += `</li></${stack.pop().tag}>`;
+      out.push(html); continue;
+    }
+    if (/^>\s?/.test(l)) { const buf = []; while (i < L.length && /^>\s?/.test(L[i])) buf.push(L[i++].replace(/^>\s?/, '')); out.push(`<blockquote>${mdInline(buf.join(' '))}</blockquote>`); continue; }
+    if (!l.trim()) { i++; continue; }
+    const buf = [l]; i++;
+    while (i < L.length && L[i].trim() && !/^(#{1,4}\s|```|\s*\||\s*([*-]|\d+\.)\s+|>)/.test(L[i])) buf.push(L[i++]);
+    out.push(`<p>${mdInline(buf.join(' '))}</p>`);
+  }
+  return {html: out.join('\n'), toc};
+}
+
+// ================= quit / preselect =================
+async function quitLauncher() {
+  if (!confirm('Stop the launcher? Running jobs are stopped too.')) return;
+  try { await api('/api/quit', {}); } catch (e) {}
+  document.body.innerHTML = '<div style="padding:60px;font:15px sans-serif;color:#9aa1a9">The launcher is stopped. Start it again with the Desktop shortcut (or start.command). You can close this tab.</div>';
+}
+let preDone = false;
+async function applyPreselect() {
+  if (preDone || !S) return; preDone = true;
+  const url = new URLSearchParams(location.search);
+  if (S.preselect && S.preselect.start && !S.preselect.job) { await new Promise(r => setTimeout(r, 1500)); await refresh(); }
+  const P = Object.assign({}, S.preselect || {});
+  const startFromUrl = url.has('start') && url.get('start') !== '0' && url.get('start') !== 'False';
+  ['video_id', 'config', 'setup', 'run', 'tab', 'start', 'force'].forEach(k => { if (url.has(k)) P[k] = url.get(k); });
+  if (!Object.keys(P).length) return;
+  if (location.search) history.replaceState(null, '', location.pathname);
+  if (P.video_id && S.videos.find(v => v.id === P.video_id)) {
+    selectVideo(P.video_id);
+    const setSel = (id, val) => { if (!val) return; const el = $(id); if (![...el.options].some(o => o.value === val)) el.insertAdjacentHTML('beforeend', `<option value="${esc(val)}">${esc(val)}</option>`); el.value = val; };
+    setSel('cfg', P.config); setSel('setup', P.setup); if (P.run) $('run').value = P.run;
+    if (selVid) { prefs[selVid] = {config: $('cfg').value, setup: $('setup').value, run: $('run').value}; savePrefs(); }
+    preview();
+  }
+  if (P.job) watch(P.job);                                          // started by the server (--start)
+  else if (startFromUrl && P.video_id) { $('force').checked = !!P.force && P.force !== '0' && P.force !== 'False'; await startJob(req('analyse')); }
+  const tab = P.tab;
+  if (tab === 'setup' || tab === 'review') openManual(tab);
+  else if (tab === 'live' || tab === 'screen') { msRun = $('run').value || msRun; msMode = tab === 'live' ? 'live' : 'replay'; showTab('screen'); }
+  else if (tab) showTab(tab);
+  api('/api/preselect_done', {}).catch(() => {});
+}
+
+refresh().then(applyPreselect);
+setInterval(() => { if (document.visibilityState === 'visible') refresh(); }, 5000);
+</script>
+</body>
+</html>

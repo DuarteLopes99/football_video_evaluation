@@ -1,0 +1,14 @@
+__pycache__/
+.ipynb_checkpoints/
+.venv/
+data/raw/
+data/videos/*
+!data/videos/README.md
+data/xg/
+models/*.onnx
+models/*.pt
+outputs/
+!outputs/.gitkeep
+*.mp4
+*.mov
+.DS_Store
