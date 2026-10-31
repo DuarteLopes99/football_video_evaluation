@@ -21,6 +21,7 @@ match.mp4 ──▶ PERCEPTION ────────────────�
 * What you validate by hand, why, and how it is used: [`docs/MANUAL_VALIDATION.md`](docs/MANUAL_VALIDATION.md)
 * What the report contains, which metrics matter and how far to trust each one: [`docs/REPORT_GUIDE.md`](docs/REPORT_GUIDE.md)
 * Where the recordings live and how to keep a season without filling the disk: [`docs/VIDEO_STORAGE.md`](docs/VIDEO_STORAGE.md)
+* Quick visual demo — players coloured by team + ball tracking + ball control, no calibration (`python simple_track.py <video> --start 24:38 --duration 30`; step-by-step debug: `python debug_simple.py <video> --time 24:40`): [`docs/SIMPLE_TRACKER.md`](docs/SIMPLE_TRACKER.md)
 
 ## Start here: the launcher
 
