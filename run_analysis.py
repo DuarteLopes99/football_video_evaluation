@@ -48,6 +48,7 @@ def main():
                     help="processing speed preset (overrides analysis_fps / detector tiles of the config)")
     ap.add_argument("--no-report", action="store_true")
     ap.add_argument("--no-live", action="store_true", help="do not write the live preview (<out>/live/) during perception")
+    ap.add_argument("--no-setup", action="store_true", help="do not look for a match setup of this video automatically")
     a = ap.parse_args()
 
     cfg = load_config(a.config)
@@ -64,6 +65,15 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     prov = Provenance()
     setup = None
+    if not a.setup and not a.no_setup and (a.video or a.tracks):
+        from football_eval.match_setup import find_setup
+        found = find_setup(a.video or _video_of_run(a.tracks), ROOT / "configs")
+        if found:
+            a.setup = str(found.relative_to(ROOT)) if found.is_relative_to(ROOT) else str(found)
+            print(f"Match setup found for this video: {a.setup} (your manual input is used; --no-setup to skip it)")
+        else:
+            print("[warn] no match setup for this video: teams, periods, kits and calibration are all guessed. "
+                  "Run the setup first (scripts/match_ui.py setup) for reliable results.")
     if a.setup:
         setup = load_setup(a.setup)
         items = checklist(setup, ROOT)
@@ -73,6 +83,9 @@ def main():
             sys.exit("\nBlocking setup items: " + ", ".join(i["item"] for i in blocking) +
                      " — complete them in scripts/match_ui.py setup, or pass --force")
         changes = apply_to_config(setup, cfg)
+        if a.video:                         # clicked landmarks without a solved venue camera -> solve it now
+            from football_eval.autocalib import ensure_calibration
+            changes += ensure_calibration(setup, a.setup, cfg, a.video, ROOT)
         if changes:
             print("Applied from the setup:\n  " + "\n  ".join(changes))
         setup_provenance(prov, setup, cfg, changes)
@@ -171,6 +184,13 @@ def main():
     if not a.synthetic and review is None:
         print(f"Next: check the key events and a few frames ->  python scripts/match_ui.py review --run {out}"
               + (f" --setup {a.setup}" if a.setup else ""))
+
+
+def _video_of_run(run_dir: str):
+    try:
+        return json.loads((Path(run_dir) / "meta.json").read_text()).get("video", {}).get("path")
+    except (OSError, ValueError):
+        return None
 
 
 def _perception_provenance(prov: Provenance, res: dict):

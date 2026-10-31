@@ -417,6 +417,8 @@ def test_windows_and_near_side_visibility():
     from football_eval.perception import foot_points, processing_windows, visible_near_y
     cfg = load_config()
     cfg.match.halves = [[300.0, 3000.0], [3010.0, 5800.0]]
+    assert processing_windows(cfg, 6000.0) == [(300.0, 3000.0), (3010.0, 5800.0)]   # default: the game only
+    cfg.video.period_margin_s = 20.0
     assert processing_windows(cfg, 6000.0) == [(280.0, 5820.0)]          # half-time of 10 s: one window
     cfg.match.halves = [[300.0, 3000.0], [3900.0, 6600.0]]
     assert processing_windows(cfg, 6700.0) == [(280.0, 3020.0), (3880.0, 6620.0)]
@@ -444,6 +446,107 @@ def test_windows_and_near_side_visibility():
     ctx = MatchContext(p, [(0.0, 20.0)], [{0: True, 1: False}])
     dead, st = dead_ball(fc, sp, ctx, cfg)
     assert (st.reason == "out_of_view_near").any() and (st.side == "touchline_near").any()
+
+
+# ----------------------------------------------------------------------------- manual input always used / people
+def test_camera_from_landmark_clicks():
+    """Closed-form camera from one frame of clicks finds the camera position; a mislabelled click is dropped; the
+    joint solve over two frames reproduces the clicks."""
+    from football_eval.ptz import PTZCamera, camera_from_homography, landmark_errors, solve_from_landmarks
+    pitch = Pitch(100, 64)
+    cam = PTZCamera(np.array([50.5, -3.0, 4.5]), 0.01, pitch=pitch)
+    lm = pitch.landmarks()
+    frames = []
+    for pose in ([-0.75, 0.06, 620.0], [0.8, 0.05, 560.0]):
+        uv, front = cam.project_ours(np.array(list(lm.values())), pose)
+        ok = front & (uv[:, 0] > 5) & (uv[:, 0] < 635) & (uv[:, 1] > 5) & (uv[:, 1] < 355)
+        pts = {n: list(map(float, u)) for n, u, k in zip(lm, uv, ok) if k}
+        assert len(pts) >= 6
+        frames.append((np.zeros((360, 640, 3), np.uint8), pts))
+    C, roll, p, inl, out = camera_from_homography(frames[0][1], pitch, 640, 360)
+    assert np.linalg.norm(C - cam.C) < 0.5 and abs(p[2] - 620) < 15 and not out
+    bad = dict(frames[0][1])
+    k0, k1 = list(bad)[:2]
+    bad[k0], bad[k1] = bad[k1], bad[k0]                       # two landmark names swapped by the user
+    *_, out = camera_from_homography(bad, pitch, 640, 360)
+    assert set(out) & {k0, k1}
+    cam2, P, errs, dropped = solve_from_landmarks(frames, pitch)
+    assert np.linalg.norm(cam2.C - cam.C) < 1.0
+    assert all(np.median(e) < 2.0 for e in errs)
+    assert np.median(landmark_errors(cam2, P[1], frames[1][1])) < 2.0
+
+
+def test_ptz_provider_any_resolution():
+    """A venue camera solved at 640 x 360 tracks a 1080p video: the homography is scaled back to video pixels."""
+    from football_eval.pitch import Homography as Hm
+    from football_eval.ptz import PTZCamera, PTZProvider
+    cam = PTZCamera(np.array([52.0, -2.5, 4.0]), pitch=Pitch(100, 64))
+    prov = PTZProvider(cam, ignore=[[1500, 900, 1860, 1020]])
+    pose = np.array([0.1, 0.06, 600.0])
+    seen = {}
+
+    def fake(frame_idx, image, boxes=None):
+        seen["shape"], seen["boxes"] = image.shape, boxes
+        prov.last_evidence, prov.last_image_motion = None, None
+        return cam.homography(pose)
+    prov._get = fake
+    H = prov.get(0, np.zeros((1080, 1920, 3), np.uint8), np.array([[300.0, 600, 330, 690]]))
+    assert seen["shape"][:2] == (360, 640) and np.allclose(seen["boxes"], [[100, 200, 110, 230]])
+    assert np.allclose(prov.ignore[0], [500, 300, 620, 340])
+    xy = np.array([[50.0, 32.0], [70.0, 10.0]])
+    assert np.allclose(H.to_image(xy), 3 * Hm(cam.H_ours(*pose)).to_image(xy), atol=1e-6)
+
+
+def test_people_types_and_periods():
+    """Fans, staff and stewards are separated from the players; analytics keeps only the game periods; the setup
+    of a video is found without --setup; stored kit descriptors are used without the video."""
+    import json
+    import tempfile
+    import pandas as pd
+    from football_eval.analytics import restrict_to_periods
+    from football_eval.match_setup import find_setup, new_setup, save_setup
+    from football_eval.people import frame_types, grass_roi, hivis_share, people_summary, track_types, zones
+    p = Pitch(100, 64)
+    xy = np.array([[50.0, 30.0], [50.0, 66.0], [50.0, -8.0], [50.0, -20.0], [np.nan, np.nan], [np.nan, np.nan]])
+    foot = np.array([[0, 0]] * 4 + [[500.0, 300.0], [900.0, 700.0]])
+    boxes = np.array([[0, 0, 10, 40]] * 4 + [[490, 200, 510, 300], [890, 600, 910, 700]], float)
+    top = np.full(1280, 400.0)                                  # grass starts at row 400
+    z = zones(xy, foot, boxes, p, top)
+    assert z == ["pitch", "pitch", "touchline", "stands", "stands", "pitch"]
+    img = np.zeros((720, 1280, 3), np.uint8)
+    img[:, :640] = (0, 230, 255)                                # fluorescent yellow (BGR) on the left half
+    assert hivis_share(img, [100, 100, 160, 260]) > 0.9 and hivis_share(img, [900, 100, 960, 260]) < 0.05
+    t = frame_types(img, np.array([[100, 100, 160, 260], [900, 100, 960, 260], [900, 100, 960, 260]], float),
+                    ["touchline", "touchline", "pitch"])
+    assert t == ["steward", "staff", None]
+    assert grass_roi(top, (720, 1280)) == (0, 270, 1280, 720)
+    tr = pd.DataFrame(dict(frame=[1, 2, 3, 1, 2, 3, 1], t=[0.1, 0.2, 0.3] * 2 + [0.1], track_id=[5, 5, 5, 6, 6, 6, 7],
+                           ptype=["spectator", "spectator", None, None, None, "staff", None],
+                           cls="player", team=[0, 0, 0, 1, 1, 1, -1]))
+    tt = track_types(tr)
+    assert tt.to_dict() == {5: "spectator"}
+    summ = people_summary(tr).set_index("type")
+    assert summ.loc["player", "tracks"] == 2 and summ.loc["unknown", "tracks"] == 1
+    ball = pd.DataFrame(dict(frame=[1, 2, 3], t=[0.1, 0.2, 0.3]))
+    tr2, b2, cut = restrict_to_periods(tr, ball, [[0.15, 0.35]])
+    assert cut == 1 and tr2.t.min() >= 0.15 and len(b2) == 2
+    with tempfile.TemporaryDirectory() as d:
+        s = new_setup("data/videos/💛 My match_1080p.mp4")
+        save_setup(s, Path(d) / "match_setup_x.json")
+        assert find_setup("/somewhere/else/💛 My match_1080p.mp4", d).name == "match_setup_x.json"
+        assert find_setup("other.mp4", d) is None
+    # kit samples clicked outside a cut clip still count (their descriptor is stored in the setup)
+    from types import SimpleNamespace
+    from football_eval.perception import build_kit_bank
+    from football_eval.teams import DESC_DIM, TeamClassifier
+    rng = np.random.default_rng(0)
+    cfg = load_config()
+    cfg.teams.kit_samples = {c: [dict(t=None, frame=-1, box=[0, 0, 10, 30], desc=list(rng.normal(m, 0.05, DESC_DIM)))
+                                 for _ in range(3)] for c, m in (("team0", 0.0), ("team1", 1.0))}
+    info = SimpleNamespace(width=1920, height=1080, fps=60.0, n_frames=100)
+    kit, seeds, rep = build_kit_bank("missing.mp4", cfg, TeamClassifier(), None, info)
+    assert kit is not None and rep["stored_descriptor"] == 6 and not seeds
+    assert json.dumps(rep)
 
 
 if __name__ == "__main__":

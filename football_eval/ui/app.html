@@ -241,7 +241,8 @@ function draw() {
   if (S.mode === "review" && o.geo) {
     if (showLines) o.geo.lines.forEach((l) => line(l[0], l[1], l[2], l[3], "rgba(255,60,230,.85)", 1.2));
     if (showBoxes) o.geo.boxes.forEach((b) => {
-      if (b.cls === "outside") return rect(b.box, "rgba(130,130,130,.6)", 1);
+      const NP = {outside: "rgba(130,130,130,.6)", spectator: "rgba(140,80,120,.8)", staff: "rgba(0,160,160,.9)", steward: "rgba(255,230,0,.95)"};
+      if (NP[b.cls]) return rect(b.box, NP[b.cls], 1);          // fans / staff / security: not players
       const col = b.cls === "referee" ? "#111" : (b.team === 0 || b.team === 1) ? TEAM_COL[b.team] : "#ddd";
       rect(b.box, col, b.cls === "goalkeeper" ? 3.5 : 2);
     });

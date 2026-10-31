@@ -191,13 +191,81 @@ def _opportunities_html(opps, summary, out_dir, video_path, clips_dir) -> str:
             + (f"<details><summary><b>Opportunities per team</b></summary>{summ}</details>" if summ else ""))
 
 
+def detection_section(tracks: pd.DataFrame, team_names, video_path: str | None = None, n_snapshots: int = 4,
+                      width: int = 960) -> dict:
+    """What the detector and the classifiers saw: people per type, per team, calibration coverage, and a few
+    coloured frames (same colours as the live view). Never empty: a run where positions are missing still shows
+    its detections, so 'zero' in the statistics is explained instead of silent."""
+    from .people import people_summary
+    out = {"table": people_summary(tracks), "lines": [], "images": []}
+    if tracks is None or not len(tracks):
+        out["lines"].append("No person was detected in the analysed frames — check the video path and the periods "
+                            "of the setup (only the game is analysed).")
+        return out
+    n_fr = tracks.frame.nunique()
+    pl = tracks[tracks.cls.isin(["player", "goalkeeper"])]
+    with_xy = tracks.groupby("frame").x.agg(lambda s_: s_.notna().any())
+    out["lines"].append(f"{len(tracks)} person detections in {n_fr} analysed frames "
+                        f"({len(tracks) / max(n_fr, 1):.1f} per frame); "
+                        f"{100 * (pl.team >= 0).mean() if len(pl) else 0:.0f} % of the player detections have a team.")
+    for k, nm in enumerate(list(team_names)[:2]):
+        q = pl[pl.team == k]
+        out["lines"].append(f"{nm}: {len(q) / max(n_fr, 1):.1f} players per frame on average, "
+                            f"{q.loc[q.track_id >= 0, 'track_id'].nunique()} tracklets.")
+    out["lines"].append(f"Pitch positions available on {100 * with_xy.mean():.0f} % of the analysed frames"
+                        + ("" if with_xy.mean() > 0 else " — NO camera calibration: every position-based statistic "
+                           "(possession, events, xG, distances) is zero. Click >= 4 landmarks on 1-2 frames in the setup."))
+    if video_path and Path(str(video_path)).exists() and n_snapshots:
+        import cv2
+        from .live import annotate_frame
+        from .video import fmt_clock
+        per = tracks.groupby("frame").size()
+        grid = per.index.to_numpy()
+        picks = []
+        for chunk in np.array_split(grid, n_snapshots):
+            if len(chunk):
+                picks.append(int(per.loc[chunk].idxmax()))
+        cap = cv2.VideoCapture(str(video_path))
+        try:
+            for fr in picks:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, fr)
+                ok, img = cap.read()
+                if not ok:
+                    continue
+                rows = tracks[tracks.frame == fr]
+                t = float(rows.t.iloc[0])
+                v = annotate_frame(img, rows, team_names, title=f"{fmt_clock(t)}  frame {fr}  people {len(rows)}")
+                v = cv2.resize(v, (width, int(v.shape[0] * width / v.shape[1])), interpolation=cv2.INTER_AREA)
+                ok, buf = cv2.imencode(".jpg", v, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                if ok:
+                    out["images"].append((f"{fmt_clock(t)} (frame {fr})", base64.b64encode(buf.tobytes()).decode()))
+        finally:
+            cap.release()
+    return out
+
+
+def _detections_html(d: dict | None) -> str:
+    if not d:
+        return ""
+    h = "<h2>Who was detected</h2><ul>" + "".join(f"<li>{x}</li>" for x in d.get("lines", [])) + "</ul>"
+    tb = d.get("table")
+    if tb is not None and len(tb):
+        h += ("<p class='note'>Every person box is one of these types. Staff, security and fans are kept apart and "
+              "never counted as players (docs/STATS_RULEBOOK.md → People in the frame).</p>"
+              + tb.to_html(index=False, border=0, classes="prov"))
+    if d.get("images"):
+        h += "<details open><summary><b>Coloured frames</b> (same colours as the live view)</summary>" + "".join(
+            f"<p class='note'>{c}</p><img src='data:image/jpeg;base64,{b}'/>" for c, b in d["images"]) + "</details>"
+    return h
+
+
 def html_report(out_dir: str, team_tbl: pd.DataFrame, timeline: pd.DataFrame, figs: dict, title: str = "Match report",
                 notes: str = "", provenance=None, validation: pd.DataFrame | None = None,
                 events: pd.DataFrame | None = None, rejected: pd.DataFrame | None = None,
                 numbers: pd.DataFrame | None = None, key_metrics: pd.DataFrame | None = None,
                 quality: list | None = None, score: str | None = None,
                 opportunities: pd.DataFrame | None = None, opp_summary: pd.DataFrame | None = None,
-                video_path: str | None = None, clips_dir=None) -> Path:
+                video_path: str | None = None, clips_dir=None, detections: dict | None = None) -> Path:
     """Self-contained HTML, ordered for a reader: result and data quality -> metrics by confidence -> events ->
     figures -> how it was produced (provenance, your review, rejected events, full table)."""
     imgs = "".join(f'<h3>{k}</h3><img src="data:image/png;base64,{_b64(f)}"/>' for k, f in figs.items())
@@ -215,6 +283,7 @@ def html_report(out_dir: str, team_tbl: pd.DataFrame, timeline: pd.DataFrame, fi
               "(details: docs/REPORT_GUIDE.md).</div>")
     opp = _opportunities_html(opportunities, opp_summary, out_dir, video_path, clips_dir)
     dq = ("<h2>Data quality</h2><ul>" + "".join(f"<li>{q}</li>" for q in quality) + "</ul>") if quality else ""
+    dq += _detections_html(detections)
     metrics = ""
     if key_metrics is not None and len(key_metrics):
         km = key_metrics

@@ -67,8 +67,16 @@ Sections filled in by the assistant show **Pre-filled, not yet confirmed**. Chec
 * Choose the **Speed**: *standard* (10 analysed frames per second), *fast* (5 per second, about 2× faster, misses
   more short passes / fast shots) or *quality* (smaller detector tiles, finds more distant players and balls, 2–3×
   slower). The line under it estimates the time from the speed measured on this computer by your previous runs.
-* Only the periods you set in the setup are processed (+ 20 s around them): warm-up, half-time and the walk-off cost
-  nothing.
+* Only the periods you set in the setup are processed — from each kick-off to each final whistle, nothing else:
+  warm-up, half-time and the walk-off cost nothing and never reach a statistic.
+* Your setup is always used: if the *Match setup* box is empty, the run finds the setup made for this video by its
+  file name (the log says `Match setup found for this video: ...`). `--no-setup` on the command line skips it.
+* Calibration: if you clicked landmarks (≥ 4 on at least one frame) but never solved the venue camera, the run does it
+  first (~15 s). It compares the camera solved from your clicks with every venue camera already in `configs/` and keeps
+  the one that explains your clicks best; clicks that do not fit the others of their frame (a wrong landmark name) are
+  ignored and listed in the log — fix them in the setup. The result is written to `configs/camera_<match>_ptz.json` and
+  recorded in the setup, so it is done once. Every landmark frame is also a checkpoint: when the processing passes it,
+  the camera restarts from your pose. More landmark frames (one every 5–10 min, each half) = better positions.
 * Tick **quick test: first 600 frames** the first time on a new ground. Check the result, then run the whole match.
 * Press **▶ Start analysis**. Then press **● Watch live** (or open the **Match screen** tab, *Live*). You see the
   frame being analysed with pitch lines, players in their shirt colours, ball candidates and the minimap, plus
@@ -77,7 +85,10 @@ Sections filled in by the assistant show **Pre-filled, not yet confirmed**. Chec
   * lines that sit on the painted lines (camera OK);
   * boxes on every player (the dashed rectangles are the detector tiles — the sky above the pitch is skipped);
   * the two teams in two colours: blue = Team A, orange = Team B, purple / pink = goalkeepers, black = referee,
-    grey = not decided yet. Labels show the short team name + track number; `*` = a player you clicked in the setup.
+    grey = on the pitch but not decided yet. Labels show the short team name + track number; `*` = a player you clicked
+    in the setup.
+  * people who are not playing, as thin tagged boxes: `STAFF` (teal: coaches, bench, ball boys next to the touchline),
+    `SEC` (yellow: hi-vis security), `FAN` (mauve: stands). They are never counted as players.
   * if the near touchline is out of view, the status bar says how far before it the picture ends and the minimap
     darkens that strip.
   
@@ -142,7 +153,10 @@ screen. A **match shortcut** on the Desktop does the same with a double-click (*
 |---|---|
 | The browser does not open | go to http://127.0.0.1:8770 |
 | "address already in use" | the launcher is already running: use the open tab, or press *Quit* there first |
-| Lines far from the painted lines | review → *Camera repair*; for a new ground, calibrate it first (README) |
+| Lines far from the painted lines | review → *Camera repair*; in the setup add landmark frames (≥ 4 clicks each) near each kick-off and every 5–10 min — each one is a checkpoint the camera restarts from |
+| Report shows zeros everywhere | open *Who was detected* in the report: it says how many people were found and on how many frames positions exist. 0 % positions = no calibration: click ≥ 4 landmarks on 1–2 frames in the setup |
+| Fans / coaches counted as players | they are separated automatically (`FAN` / `STAFF` / `SEC`); if many fans stand ON the grass behind a goal, lower `pitch.offpitch_margin_m` |
+| The log says "no match setup for this video" | the setup's video path has another file name: open the setup for this recording in the launcher (step 1) or pass `--setup` |
 | Teams swapped or mixed | add kit clicks in sun **and** shade on 3–4 moments (setup step 4), then process again. The run prints how many clicked samples are recognised by the others ("leave-one-out"): below ~90 % the kits are hard to tell apart — add samples |
 | Processing too slow | Speed *fast*; make sure `onnxruntime` is installed (`.venv/bin/pip install onnxruntime`, done automatically by start.command); set the periods so half-time is skipped |
 | Many throw-ins on the camera side missing | the near touchline is out of view: they are inferred when the ball leaves the bottom of the picture (rulebook §3.1) — check them in the review |

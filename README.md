@@ -220,6 +220,9 @@ on one, goal-post bases on frames looking at each goal), then run it with `--out
 | `football_eval/ball.py` | ball trajectory cleaning (speed gating, gap interpolation, smoothing) |
 | `football_eval/scoreboard.py` | score-bug change detector (goal confirmation), optional OCR |
 | `football_eval/perception.py` | perception orchestration → `tracks.csv`, `ball.csv` |
+| `football_eval/people.py` | who is a detected person: player / goalkeeper / referee vs **staff, steward (hi-vis security), spectator**; zones from the pitch coordinates or the grass mask; `people_summary.csv` |
+| `football_eval/autocalib.py` | camera calibration straight from the setup's landmark clicks (venue camera chosen / solved, mislabelled clicks dropped), run automatically by `run_analysis.py` |
+| `scripts/make_segment_setup.py` | re-use the setup of a full match on a cut clip (times shifted, stored kit descriptors kept) |
 | `football_eval/context.py` | periods, attacking direction, football clock, player speeds |
 | `football_eval/possession.py` | ball control, touches, team possession |
 | `football_eval/events.py` | stoppages, restarts, passes, interceptions, recoveries, shots, goals, fouls/offsides (proxy) |
@@ -269,6 +272,15 @@ These are **upper bounds**: the synthetic engine has no aerial balls, deflection
 **Perception** on a real lower-league stream frame: 24 people + ball detected in 1.3 s on CPU, camera model
 re-projects onto the painted lines, kits separated except players in shadow and the referee
 (see `notebooks/01`).
+
+## What changed in v0.3 (Canedo 1080p run: "detects nothing")
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| manual input ignored (team names "Team A/B", grey boxes, 2:03:31 analysed after the final whistle) | the launcher remembered an empty *setup* choice for the video and started the run without `--setup` | `run_analysis.py` finds the setup of the video by file name when none is given; the launcher no longer lets an empty remembered choice hide a setup |
+| report all zeros | setup in `ptz` mode with clicked landmarks but no solved camera → no calibration → every pitch coordinate NaN | `autocalib.py` solves the camera from the clicks (or picks the venue camera that fits them) before processing; PTZ cameras work at any resolution (1080p video, 640-px camera); landmark frames are checkpoints during the run; the report has a *Who was detected* section with counts, calibration coverage and coloured frames |
+| fans / coaches / security boxed as players | the person detector fires on everyone | per-detection zone + hi-vis rule → `staff`, `steward`, `spectator` (§1b of the rulebook), coloured apart, excluded from every statistic |
+| time outside the game analysed | `period_margin_s` = 20 s and no filter in the analytics | margin 0 and analytics restricted to the periods |
 
 ## Limitations and next steps
 See the roadmap in `docs/SOTA_REVIEW.md` §5. In short: fine-tune a football detector, SigLIP team embeddings,

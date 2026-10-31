@@ -36,6 +36,11 @@ def run_analytics(tracks: pd.DataFrame, ball: pd.DataFrame, cfg: Config, scorebo
         prov.add("setup", "excluded stretches", f"{len(exclusions)} ({excl_s / 60:.1f} min)", "manual",
                  note="; ".join(f"{e.get('reason') or 'excluded'} {int(e['t0'] // 60)}:{int(e['t0'] % 60):02d}"
                                 f"-{int(e['t1'] // 60)}:{int(e['t1'] % 60):02d}" for e in exclusions[:8]))
+    if cfg.match.halves and cfg.video.only_periods:          # only the game: no warm-up / half-time / walk-off
+        tracks, ball, cut = restrict_to_periods(tracks, ball, cfg.match.halves)
+        if cut:
+            prov.add("setup", "outside the periods", f"{cut} analysed frames dropped", "manual",
+                     note="kick-off / final whistle of each half from the setup; only the game is analysed")
     ctx = infer_periods(tracks, pitch, cfg.match.halves, cfg.match.home_attacks_right_first_half)
     ctx.team_names = list(cfg.teams.team_names)
     # goalkeepers labelled 'other' by the colour clustering -> attach by pitch side, per period
@@ -90,6 +95,22 @@ def run_analytics(tracks: pd.DataFrame, ball: pd.DataFrame, cfg: Config, scorebo
                 opportunities=opps, opportunity_summary=opportunity_summary(opps, ctx.team_names),
                 opportunities_cfg=cfg.opportunities,
                 provenance=prov, validation=vsum, setup=setup, data_quality=dq, key_metrics=key)
+
+
+def restrict_to_periods(tracks: pd.DataFrame, ball: pd.DataFrame, halves) -> tuple:
+    """Keep only rows inside a period (``[[kick-off, final whistle], ...]`` in video seconds).
+    Returns (tracks, ball, number of analysed frames dropped)."""
+    def inside(t):
+        t = np.asarray(t, float)
+        m = np.zeros(len(t), bool)
+        for a, b in halves:
+            m |= (t >= float(a)) & (t <= float(b))
+        return m
+    n0 = tracks.frame.nunique() if len(tracks) else 0
+    tracks = tracks[inside(tracks.t)].reset_index(drop=True) if len(tracks) else tracks
+    if ball is not None and len(ball) and "t" in ball:
+        ball = ball[inside(ball.t)].reset_index(drop=True)
+    return tracks, ball, int(n0 - (tracks.frame.nunique() if len(tracks) else 0))
 
 
 def _log_analytics(prov, ctx, cfg, ev_auto, ev, rejected, review, setup):
@@ -178,6 +199,10 @@ def save_analytics(res: dict, out_dir: str, make_report: bool = True, video_path
         score = f"{names[0]} {int(g.get(0, 0))} – {int(g.get(1, 0))} {names[1]}"
         if not (dq and dq.get("score_consistent")):
             score += " <span class='note'>(goals inferred — not confirmed by a match sheet)</span>"
+        from .report import detection_section
+        det = detection_section(res["tracks"], names, video_path)
+        if det.get("table") is not None and len(det["table"]):
+            det["table"].to_csv(out / "people_summary.csv", index=False)
         return html_report(str(out), res["team_stats"], res["timeline"], figs, title,
                            notes="Single-camera analysis with manual validation.",
                            provenance=res.get("provenance"), validation=res.get("validation"),
@@ -185,5 +210,5 @@ def save_analytics(res: dict, out_dir: str, make_report: bool = True, video_path
                            numbers=res.get("player_numbers"), key_metrics=res.get("key_metrics"),
                            quality=quality_lines(dq) if dq else None, score=score,
                            opportunities=opps, opp_summary=res.get("opportunity_summary"),
-                           video_path=video_path, clips_dir=clips_dir)
+                           video_path=video_path, clips_dir=clips_dir, detections=det)
     return out

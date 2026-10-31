@@ -101,7 +101,11 @@ def data_quality(tracks, ball, fc, poss, ev, ev_auto, review: Optional[dict], se
         in_per |= (ball.t >= a).to_numpy() & (ball.t <= b).to_numpy()
     b = ball[in_per] if in_per.any() else ball
     dq["minutes_analysed"] = float(b.t.max() - b.t.min()) / 60 if len(b) else 0.0
-    dq["camera_coverage"] = float(b.cam_ok.astype(bool).mean()) if "cam_ok" in b and len(b) else 1.0
+    if "cam_ok" in b and len(b):
+        dq["camera_coverage"] = float(b.cam_ok.astype(bool).mean())
+    else:                                   # no camera log: share of frames where the players have pitch positions
+        fx = tracks.groupby("frame").x.agg(lambda s_: s_.notna().any()) if len(tracks) else pd.Series(dtype=bool)
+        dq["camera_coverage"] = float(fx.mean()) if len(fx) else 0.0
     ok = b.cam_ok.astype(bool) if "cam_ok" in b else pd.Series(True, index=b.index)
     vis = b["visible"].astype(bool) if "visible" in b else b["valid"].astype(bool)
     dq["ball_coverage"] = float(vis[ok].mean()) if ok.any() else 0.0

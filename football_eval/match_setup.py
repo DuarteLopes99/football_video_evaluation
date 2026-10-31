@@ -83,6 +83,25 @@ def load_setup(path: str | Path) -> dict:
         return _upgrade(json.load(f))
 
 
+def find_setup(video_path: Optional[str], configs_dir: str | Path) -> Optional[Path]:
+    """The match setup made for this video (``video.path`` with the same file name), newest first.
+
+    Used by ``run_analysis.py`` when ``--setup`` is not given, so the manual input is never silently ignored (the
+    launcher used to start runs without it when an empty choice had been remembered for the video)."""
+    if not video_path:
+        return None
+    name = Path(str(video_path)).name
+    hits = []
+    for p in Path(configs_dir).glob("match_setup*.json"):
+        try:
+            vp = (json.loads(p.read_text()).get("video") or {}).get("path")
+        except (OSError, ValueError):
+            continue
+        if vp and Path(str(vp)).name == name:
+            hits.append(p)
+    return max(hits, key=lambda q: q.stat().st_mtime) if hits else None
+
+
 def save_setup(setup: dict, path: str | Path) -> Path:
     setup["meta"]["updated"] = _now()
     p = Path(path)
@@ -254,9 +273,12 @@ def checklist(setup: dict, root: Optional[Path] = None) -> List[dict]:
             except (OSError, ValueError):
                 add("calibration", "warn", f"cannot read {cf}", "positions")
         else:
+            n4 = sum(len(f.get("points", {})) >= 4 for f in lf)
             add("calibration", "missing" if n_pts < 2 else "warn",
                 f"no venue camera yet; {len(lf)} landmark frame(s) with {n_pts} points",
-                "run scripts/calibrate_ptz.py --setup <this file> to solve the camera", blocking=n_pts < 2)
+                ("solved automatically from your clicks when the video is processed (football_eval/autocalib.py)"
+                 if n4 else "click >= 4 landmarks on at least one frame (or run scripts/calibrate_ptz.py --setup)"),
+                blocking=n_pts < 2)
     else:
         best = max(lf, key=lambda f: len(f.get("points", {})), default=None)
         n = len(best["points"]) if best else 0

@@ -29,7 +29,10 @@ import cv2
 import numpy as np
 
 TEAM_BGR = {"team0": (226, 144, 74), "team1": (60, 138, 239), "gk0": (255, 107, 155), "gk1": (162, 95, 255),
-            "referee": (25, 25, 25), None: (190, 190, 190)}          # same colours as the setup / review UI
+            "referee": (25, 25, 25), None: (190, 190, 190),           # same colours as the setup / review UI
+            # people who are not playing (football_eval/people.py): thin boxes, never counted as players
+            "staff": (160, 160, 0), "steward": (0, 230, 255), "spectator": (120, 80, 140)}
+NOT_PLAYING = ("staff", "steward", "spectator")
 
 
 class LivePreview:
@@ -43,8 +46,7 @@ class LivePreview:
         self.last = 0.0
         self.t0 = time.time()
         self.team_names = list(team_names or ["Team A", "Team B"])
-        ab = [_short(n, "AB"[i]) for i, n in enumerate(self.team_names[:2])]
-        self.label_txt = {"team0": ab[0], "team1": ab[1], "gk0": "GK " + ab[0], "gk1": "GK " + ab[1], "referee": "REF"}
+        self.label_txt = label_texts(self.team_names)
         self.colors = dict(TEAM_BGR)
         self.kit_report = kit_report or {}
         self.lines = [ln for ln in pitch.lines(24)]
@@ -82,7 +84,8 @@ class LivePreview:
                       has_calibration=H is not None, camera=cam, width=int(v.shape[1]), height=int(v.shape[0]),
                       video_duration_s=round(self.info.duration_s, 1), updated=time.time(),
                       n_tiles=len(tiles) if tiles else None,
-                      labelled={k: lab.count(k) for k in ("team0", "team1", "gk0", "gk1", "referee")},
+                      labelled={k: lab.count(k) for k in ("team0", "team1", "gk0", "gk1", "referee", "staff",
+                                                           "steward", "spectator")},
                       clicked_tracks_in_view=int(sum(bool(m) for m in (manual or []))))
             if self.total:
                 st["progress"] = round(min(1.0, n / self.total), 4)
@@ -119,23 +122,10 @@ class LivePreview:
                 for k in range(len(ln) - 1):
                     if front[k] and front[k + 1] and np.all(np.abs(uv[k:k + 2]) < 4 * max(w, h)):
                         cv2.line(v, tuple(np.int32(uv[k])), tuple(np.int32(uv[k + 1])), (255, 0, 255), 1, cv2.LINE_AA)
-        # people (unknown first, so team boxes stay on top)
+        # people: non-players first, then unknown, then team boxes on top
         boxes = people.xyxy if len(people) else np.zeros((0, 4))
         cls = list(labels) if labels is not None else [None] * len(boxes)
-        man = list(manual) if manual is not None else [False] * len(boxes)
-        fs = 0.42 * sc
-        for k in sorted(range(len(boxes)), key=lambda i: cls[i] is not None):
-            x0, y0, x1, y1 = map(int, boxes[k])
-            col = self.colors.get(cls[k], TEAM_BGR[None])
-            cv2.rectangle(v, (x0, y0), (x1, y1), col, 2 if cls[k] else 1)
-            lab = (self.label_txt.get(cls[k], "") + " " if cls[k] else "") + (str(int(ids[k])) if ids[k] >= 0 else "")
-            lab = (lab.strip() + ("*" if man[k] else "")).strip()
-            if lab:
-                (tw, th), _ = cv2.getTextSize(lab, cv2.FONT_HERSHEY_SIMPLEX, fs, 1)
-                yb = max(th + 4, y0 - 2)
-                cv2.rectangle(v, (x0, yb - th - 4), (x0 + tw + 4, yb + 1), col, -1)
-                txt_col = (255, 255, 255) if sum(col) < 380 else (20, 20, 20)
-                cv2.putText(v, lab, (x0 + 2, yb - 2), cv2.FONT_HERSHEY_SIMPLEX, fs, txt_col, 1, cv2.LINE_AA)
+        draw_people(v, boxes, cls, ids, manual, self.label_txt, self.colors, sc)
         for (u, vv) in balls_uv:
             cv2.circle(v, (int(u), int(vv)), int(7 * sc), (0, 255, 255), 2, cv2.LINE_AA)
         # minimap (+ unseen near-side strip)
@@ -165,20 +155,7 @@ class LivePreview:
         return v
 
     def _legend(self, v, sc):
-        items = [("team0", self.team_names[0]), ("team1", self.team_names[1] if len(self.team_names) > 1 else "Team B"),
-                 ("gk0", "GK " + self.label_txt["team0"]), ("gk1", "GK " + self.label_txt["team1"]),
-                 ("referee", "referee"), (None, "unknown")]
-        fs = 0.42 * sc
-        x = v.shape[1] - int(170 * sc)
-        y = int(30 * sc)
-        cv2.rectangle(v, (x - 8, y - int(14 * sc)), (v.shape[1] - 4, y + int(17 * sc) * len(items) + int(6 * sc)),
-                      (0, 0, 0), -1)
-        for k, (c, name) in enumerate(items):
-            yy = y + int(17 * sc) * k
-            cv2.rectangle(v, (x, yy - int(9 * sc)), (x + int(12 * sc), yy + int(2 * sc)), self.colors.get(c, TEAM_BGR[None]), -1)
-            cv2.putText(v, str(name)[:18], (x + int(18 * sc), yy), cv2.FONT_HERSHEY_SIMPLEX, fs, (235, 235, 235), 1, cv2.LINE_AA)
-        cv2.putText(v, "* = clicked by you", (x, y + int(17 * sc) * len(items)), cv2.FONT_HERSHEY_SIMPLEX, 0.36 * sc,
-                    (200, 200, 200), 1, cv2.LINE_AA)
+        draw_legend(v, self.team_names, self.colors, sc)
 
     def minimap(self, xy, cls, w: int = 170, near_y: Optional[float] = None) -> np.ndarray:
         p = self.pitch
@@ -195,12 +172,116 @@ class LivePreview:
             cv2.polylines(m, [np.array([to(x, y) for x, y in ln], np.int32)], False, (225, 225, 225), 1)
         for k in range(len(xy)):
             x, y = xy[k]
+            if k < len(cls) and cls[k] in NOT_PLAYING:                  # the minimap shows who is playing
+                continue
             if np.isfinite(x) and np.isfinite(y):
                 cv2.circle(m, to(x, y), 3, self.colors.get(cls[k] if k < len(cls) else None, TEAM_BGR[None]), -1)
         return m
 
     def _state(self, d: dict):
         _atomic_write(self.dir / "state.json", json.dumps(d, default=float).encode())
+
+
+def label_texts(team_names) -> dict:
+    names = list(team_names or ["Team A", "Team B"]) + ["Team B"]
+    ab = [_short(n, "AB"[i]) for i, n in enumerate(names[:2])]
+    return {"team0": ab[0], "team1": ab[1], "gk0": "GK " + ab[0], "gk1": "GK " + ab[1], "referee": "REF",
+            "staff": "STAFF", "steward": "SEC", "spectator": "FAN"}
+
+
+def row_label(cls: str, team: int) -> Optional[str]:
+    """tracks.csv row (cls, team) -> drawing class: team0 | team1 | gk0 | gk1 | referee | staff | steward |
+    spectator | None (on the pitch, team unknown)."""
+    if cls in NOT_PLAYING:
+        return cls
+    if cls == "outside":                                    # runs made before the people classes existed
+        return "spectator"
+    if cls == "referee":
+        return "referee"
+    if team in (0, 1):
+        return ("gk%d" if cls == "goalkeeper" else "team%d") % team
+    return None
+
+
+def draw_people(v: np.ndarray, boxes, cls: list, ids, manual=None, label_txt: Optional[dict] = None,
+                colors: Optional[dict] = None, sc: Optional[float] = None) -> np.ndarray:
+    """Boxes coloured by team / role; staff, stewards and fans as thin tagged boxes (drawn first, players on top)."""
+    label_txt = label_txt or label_texts(None)
+    colors = colors or TEAM_BGR
+    sc = sc or max(1.0, v.shape[0] / 720)
+    man = list(manual) if manual is not None else [False] * len(boxes)
+    ids = list(ids) if ids is not None else [-1] * len(boxes)
+    fs = 0.42 * sc
+    rank = lambda i: 0 if cls[i] in NOT_PLAYING else (1 if cls[i] is None else 2)
+    for k in sorted(range(len(boxes)), key=rank):
+        x0, y0, x1, y1 = map(int, boxes[k])
+        col = colors.get(cls[k], TEAM_BGR[None])
+        if cls[k] in NOT_PLAYING:                                   # thin box + short tag, no track id
+            cv2.rectangle(v, (x0, y0), (x1, y1), col, 1)
+            lab = label_txt[cls[k]]
+            (tw, th), _ = cv2.getTextSize(lab, cv2.FONT_HERSHEY_SIMPLEX, 0.8 * fs, 1)
+            cv2.rectangle(v, (x0, max(0, y0 - th - 4)), (x0 + tw + 4, max(th + 4, y0)), col, -1)
+            cv2.putText(v, lab, (x0 + 2, max(th + 1, y0 - 3)), cv2.FONT_HERSHEY_SIMPLEX, 0.8 * fs, (20, 20, 20), 1,
+                        cv2.LINE_AA)
+            continue
+        cv2.rectangle(v, (x0, y0), (x1, y1), col, 2 if cls[k] else 1)
+        lab = (label_txt.get(cls[k], "") + " " if cls[k] else "") + (str(int(ids[k])) if ids[k] >= 0 else "")
+        lab = (lab.strip() + ("*" if man[k] else "")).strip()
+        if lab:
+            (tw, th), _ = cv2.getTextSize(lab, cv2.FONT_HERSHEY_SIMPLEX, fs, 1)
+            yb = max(th + 4, y0 - 2)
+            cv2.rectangle(v, (x0, yb - th - 4), (x0 + tw + 4, yb + 1), col, -1)
+            txt_col = (255, 255, 255) if sum(col) < 380 else (20, 20, 20)
+            cv2.putText(v, lab, (x0 + 2, yb - 2), cv2.FONT_HERSHEY_SIMPLEX, fs, txt_col, 1, cv2.LINE_AA)
+    return v
+
+
+def draw_legend(v: np.ndarray, team_names, colors: Optional[dict] = None, sc: Optional[float] = None,
+                counts: Optional[dict] = None) -> np.ndarray:
+    colors = colors or TEAM_BGR
+    sc = sc or max(1.0, v.shape[0] / 720)
+    names = list(team_names or ["Team A", "Team B"]) + ["Team B"]
+    items = [("team0", names[0]), ("team1", names[1]), ("gk0", "GK " + names[0]), ("gk1", "GK " + names[1]),
+             ("referee", "referee"), (None, "unknown (on pitch)"), ("staff", "staff / bench"),
+             ("steward", "security (hi-vis)"), ("spectator", "fans / stands")]
+    if counts is not None:
+        items = [(c, f"{n} ({counts.get(c, 0)})") for c, n in items]
+    fs = 0.42 * sc
+    x = v.shape[1] - int(185 * sc)
+    y = int(30 * sc)
+    cv2.rectangle(v, (x - 8, y - int(14 * sc)), (v.shape[1] - 4, y + int(17 * sc) * len(items) + int(6 * sc)),
+                  (0, 0, 0), -1)
+    for k, (c, name) in enumerate(items):
+        yy = y + int(17 * sc) * k
+        cv2.rectangle(v, (x, yy - int(9 * sc)), (x + int(12 * sc), yy + int(2 * sc)), colors.get(c, TEAM_BGR[None]), -1)
+        cv2.putText(v, str(name)[:22], (x + int(18 * sc), yy), cv2.FONT_HERSHEY_SIMPLEX, fs, (235, 235, 235), 1,
+                    cv2.LINE_AA)
+    cv2.putText(v, "* = clicked by you", (x, y + int(17 * sc) * len(items)), cv2.FONT_HERSHEY_SIMPLEX, 0.36 * sc,
+                (200, 200, 200), 1, cv2.LINE_AA)
+    return v
+
+
+def annotate_frame(img: np.ndarray, rows, team_names, ball_uv=None, title: str = "", counts: bool = True) -> np.ndarray:
+    """One analysed frame from the saved tables (tracks.csv rows of that frame): used by the report snapshots and
+    scripts/render_debug_video.py, same colours as the live view."""
+    v = img.copy()
+    if rows is not None and len(rows):
+        boxes = rows[["x0", "y0", "x1", "y1"]].to_numpy(float)
+        cls = [row_label(str(c), int(t)) for c, t in zip(rows.cls, rows.team)]
+        draw_people(v, boxes, cls, rows.track_id.to_numpy(), None, label_texts(team_names))
+    else:
+        cls = []
+    if ball_uv is not None and np.all(np.isfinite(ball_uv)):
+        sc = max(1.0, v.shape[0] / 720)
+        cv2.circle(v, (int(ball_uv[0]), int(ball_uv[1])), int(8 * sc), (0, 255, 255), 2, cv2.LINE_AA)
+    draw_legend(v, team_names, counts={c: cls.count(c) for c in set(cls)} if counts else None)
+    if title:
+        sc = max(1.0, v.shape[0] / 720)
+        bh = int(18 * sc)
+        cv2.rectangle(v, (0, 0), (v.shape[1], bh), (0, 0, 0), -1)
+        cv2.putText(v, title, (5, bh - int(5 * sc)), cv2.FONT_HERSHEY_SIMPLEX, 0.42 * sc, (220, 255, 220), 1,
+                    cv2.LINE_AA)
+    return v
 
 
 def _short(name: str, fallback: str) -> str:

@@ -35,7 +35,7 @@ module that implements the rule. Version 0.1 — rules are deliberately simple a
 | Step | Rule | Keys |
 |---|---|---|
 | Ground point | bottom-centre of each person box (feet) and of the ball box, projected with the homography | `pitch.*` |
-| Off-pitch people | further than `offpitch_margin_m` outside the lines → `cls = outside` (bench, staff, ball boys) and ignored | `pitch.offpitch_margin_m` |
+| People in the frame | every person box gets a **zone** from where the feet are: `pitch` (inside the lines + `offpitch_margin_m`), `touchline` (up to `staff_band_m` farther) or `stands`. With a camera calibration the zone comes from the pitch coordinates, without one from the grass mask of the frame (feet on the grass = pitch). Off the pitch: `touchline` → **staff** (coaches, bench, ball boys), `stands` → **spectator** (fans); either one with a fluorescent hi-vis torso (≥ `hivis_min_share` of the pixels) → **steward** (security). Per track the type seen in ≥ 60 % of its frames wins (a vest seen in ≥ 30 % of the off-pitch frames = steward). These people are never counted as players: no team, no kit vote, not on the minimap, not in any statistic. Counts per type: `people_summary.csv` and the report (*Who was detected*) — see §1b | `pitch.offpitch_margin_m`, `pitch.staff_band_m`, `pitch.hivis_min_share`, `people.py` |
 | Team per track (kit clicks) | **with `match_setup.json` kits**: colour descriptor per crop every 5th frame → k-means with the two centres *seeded* at the clicked samples of each team (samples weighted ×20, identity re-checked after fitting) → goalkeeper / referee if a crop is closer to one of their clicked samples than 0.8 × the team distance and within the 75th-percentile in-team spread → vote per track; a tie between the top classes = unknown. Votes saved in `team_assignment.csv` | `teams.kit_samples`, `teams.KitClassifier` |
 | Team per track (no clicks) | colour descriptor per crop every 5th frame → KMeans(2) fitted on the first `fit_frames` → majority vote per track (≥ 60 %); cluster order arbitrary unless `teams.kit_colors` is set | `teams.*` |
 | Referee / other | crops farther than `quantile × factor` from both team centroids | `teams.outlier_quantile`, `teams.outlier_factor` |
@@ -44,6 +44,25 @@ module that implements the rule. Version 0.1 — rules are deliberately simple a
 | Player speed | rolling mean of 5 positions, speed from consecutive samples; values > 11 m/s or across gaps > 1 s discarded | `context.player_speeds` |
 
 ---
+
+### 1b · People types (`people.py`) and what only the game means
+
+| Type (`tracks.cls`) | Rule | Colour (live view, debug video, report frames) |
+|---|---|---|
+| `player` | on the pitch, kit of team A / B (clicked kits → nearest clicked samples, else k-means) | blue / orange box + short team name + track id |
+| `goalkeeper` | clicked goalkeeper kit, or a team-less track living in a penalty area | purple / pink |
+| `referee` | clicked referee kit | black |
+| `player` with `team = -1` (*unknown*) | on the pitch but no kit decided (occluded, blurred, not like any click) | grey |
+| `staff` | off the pitch, next to the touchline: coaches, substitutes, bench, ball boys | teal, thin, tag `STAFF` |
+| `steward` | off the pitch, fluorescent hi-vis vest: security | yellow, thin, tag `SEC` |
+| `spectator` | off the pitch, in the stands / behind the fences | mauve, thin, tag `FAN` |
+
+`outside` in runs made before this version = any of the three off-pitch types.
+
+**Only the game is analysed.** With the kick-off / final whistle of each half in the setup (`periods`), the video is
+processed only inside them (`video.only_periods: true`, `video.period_margin_s: 0` — no warm-up, half-time or walk-off),
+and the analytics drops any row outside them as well (also when re-running from older tracks), logged in the
+provenance as *outside the periods*.
 
 ## 2 · Ball control and possession (`possession.py`)
 

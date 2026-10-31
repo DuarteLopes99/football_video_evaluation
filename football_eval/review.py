@@ -524,8 +524,8 @@ class RunGeometry:
         for x0, y0, x1, y1 in self.lines(frame):
             cv2.line(out, (int(x0), int(y0)), (int(x1), int(y1)), (255, 0, 255), 1, cv2.LINE_AA)
         for b in self.boxes(frame):
-            if b["cls"] == "outside":
-                c = (90, 90, 90)
+            if b["cls"] in ("outside", "spectator", "staff", "steward"):     # not players (football_eval/people.py)
+                c = {"staff": (160, 160, 0), "steward": (0, 230, 255)}.get(b["cls"], (120, 80, 140))
             elif b["cls"] == "referee":
                 c = (0, 0, 0)
             else:

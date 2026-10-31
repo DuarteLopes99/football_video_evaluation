@@ -438,11 +438,11 @@ function fillSel(v, keep) {
   $('s-results').onclick = () => { curRun = v.runs[0]; showTab('results'); };
   const p = prefs[v.id] || {};
   if (!keep) {
-    const stem = v.name.replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9_.-]+/g, '_');
+    const stem = (v.name.replace(/\.[^.]+$/, '').replace(/[^A-Za-z0-9_.-]+/g, '_').replace(/^[._]+|[._]+$/g, '').slice(0, 80)) || 'match';   // same as _safe_name() in launcher.py
     $('cfg').innerHTML = opt(S.configs, p.config || v.config || '', [['', '(defaults — configs/default.yaml values)']]);
     const newSetup = 'configs/match_setup_' + stem + '.json';
     const setups = S.setups.includes(newSetup) ? S.setups : S.setups.concat([newSetup]);
-    $('setup').innerHTML = opt(setups, p.setup ?? v.setup ?? '', [['', '(none — automatic only)']]).replace(`>${newSetup}<`, `>${newSetup} (new)<`);
+    $('setup').innerHTML = opt(setups, p.setup || v.setup || '', [['', '(none — automatic only)']]).replace(`>${newSetup}<`, `>${newSetup} (new)<`);
     $('run').value = p.run || (v.runs[0] || stem);
   }
   ['st1','st2','st3'].forEach(s => $(s).classList.remove('done'));

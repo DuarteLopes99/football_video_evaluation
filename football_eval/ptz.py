@@ -432,6 +432,13 @@ class PTZProvider(HomographyProvider):
         self.log: List[dict] = []
         self.last_image_motion = None
         self.last_evidence = None
+        self.last_field = None                  # grass mask of the last evaluated frame, video pixels
+        self.init_candidates: list = []         # poses tried on the first frame (all anchors of the camera file)
+        self.anchors: dict = {}                 # frame -> validated pose: the tracker restarts from it when passing it
+        self.anchor_snap_frames = 15            # ... if the analysed frame is at most this many frames after it
+        self.anchor_hits: list = []
+        self.prev_frame = None
+        self.init_report: dict = {}
 
     def refine_guarded(self, p, ev, max_step=(0.035, 0.025, 0.08), taus=None, nfev=None):
         """Coarse-to-fine line alignment around ``p``; returns (q, err_before, err_after, accepted)."""
@@ -480,8 +487,71 @@ class PTZProvider(HomographyProvider):
         return q, (e1 if ok else self.al.mean_line_error(best[1], ev))
 
     def get(self, frame_idx, image, boxes=None):
-        if image.shape[1] != self.cam.width:
-            raise ValueError("PTZ camera was calibrated at %dx%d" % (self.cam.width, self.cam.height))
+        """Pose of this frame -> pitch homography in the coordinates of ``image``.
+
+        The venue camera is solved at a working resolution (640 x 360 by default: line alignment and background
+        motion are as accurate and ~9x cheaper than at 1080p). A frame of another size with the same aspect ratio is
+        downscaled for the tracking and the homography is scaled back, so a 1080p recording of the same venue uses the
+        same camera file."""
+        h, w = image.shape[:2]
+        if w == self.cam.width:
+            H = self._get(frame_idx, image, boxes)
+            self.last_field = None if self.last_evidence is None else self.last_evidence.field
+            return H
+        s = self.cam.width / w
+        if abs(h * s - self.cam.height) > 2.0:
+            raise ValueError("PTZ camera was calibrated at %dx%d, frame is %dx%d (different aspect ratio)"
+                             % (self.cam.width, self.cam.height, w, h))
+        if getattr(self, "_scale", None) != s:          # ignore regions are given in video pixels
+            self._scale = s
+            self._ignore_full = getattr(self, "_ignore_full", None) or list(self.ignore)
+            self.ignore = [[v * s for v in r] for r in self._ignore_full]
+            self.mo.ignore = self.ignore
+        small = cv2.resize(image, (self.cam.width, self.cam.height), interpolation=cv2.INTER_AREA)
+        b = None if boxes is None else np.asarray(boxes, float).reshape(-1, 4) * s
+        Hs = self._get(frame_idx, small, b)
+        S = np.diag([1 / s, 1 / s, 1.0])                  # working pixels -> video pixels
+        if self.last_image_motion is not None:
+            self.last_image_motion = S @ self.last_image_motion @ np.linalg.inv(S)
+        self.last_field = None if self.last_evidence is None else cv2.resize(
+            self.last_evidence.field, (w, h), interpolation=cv2.INTER_NEAREST)
+        return None if Hs is None else Homography(S @ Hs.H)
+
+    def initialize(self, image, boxes=None):
+        """First frame: the best of (a) every anchor pose re-localised on this frame and (b) a global search, by line
+        alignment error. Without it a run starting far from the anchor (e.g. at the 2nd-half kick-off, or a clip
+        starting before the landmark frame) followed a wrong pose for minutes."""
+        ev = Evidence(image, boxes, self.ignore)
+        if ev.n_line < self.min_line_px and len(ev.edge_px) <= 50:
+            return
+        cands = [np.asarray(c, float) for c in (self.init_candidates or [])]
+        if self.p is not None:
+            cands.insert(0, np.asarray(self.p, float))
+        best = (np.inf, self.p, "anchor")
+        for c in cands:
+            q, e = self.relocalize(c, ev)
+            if np.isfinite(e) and e < best[0]:
+                best = (e, q, "anchor+relocalized")
+        if not np.isfinite(best[0]) or best[0] > 2.0:
+            q, _ = self.al.global_search(ev, pan_range=self.pan_range, f_range=self.f_range, n=(81, 5, 9), top=6)
+            e = self.al.mean_line_error(q, ev)
+            if np.isfinite(e) and e < best[0]:
+                best = (e, q, "global")
+        if best[1] is not None:
+            self.p = np.asarray(best[1], float)
+            self.init_report = dict(source=best[2], line_err=float(best[0]), n_candidates=len(cands))
+
+    def _get(self, frame_idx, image, boxes=None):
+        if self.k == 0 and (self.init_candidates or self.p is not None) and not getattr(self, "init_report", None):
+            self.initialize(image, boxes)
+        # passing a frame whose pose you validated (setup landmark frame / review repair): restart from it
+        hit = [a for a in sorted(self.anchors) if self.prev_frame is not None and self.prev_frame < a <= frame_idx]
+        if hit and frame_idx - hit[-1] <= self.anchor_snap_frames:
+            self.p = np.asarray(self.anchors[hit[-1]], float)
+            self.mo.reset()
+            self.n_bad = self.n_lost = 0
+            self.anchor_hits.append(int(hit[-1]))
+        self.prev_frame = frame_idx
         pred, n_inl = self.mo.step(image, boxes, self.p)
         src = "motion" if pred is not None else "hold"
         p = pred if pred is not None else self.p
@@ -619,6 +689,174 @@ def track_video(video: str, cam: PTZCamera, p0, t0: float, t1: float, fps: float
             snaps[round(t, 2)] = im
             next_snap = t + every_snapshot_s
     return prov.log, snaps
+
+
+def initial_fit(img, points, ignore, pitch, width: Optional[int] = None, height: Optional[int] = None):
+    """Multi-start fit of the camera centre C, roll and the pose of ONE frame from its clicked landmarks + lines.
+
+    ``img`` is the frame at the working resolution (``width`` x ``height``, default the image size); ``points`` are
+    {landmark: [u, v]} in that resolution. Returns (PTZCamera, pose)."""
+    h_img, w_img = img.shape[:2]
+    width, height = int(width or w_img), int(height or h_img)
+    lm = pitch.landmarks()
+    ev = Evidence(img, None, ignore)
+    names = [n for n in points if n in lm]
+    uvs = np.array([points[n] for n in names], float)
+    best = None
+    for Y in (-3, -6, -10, -15, -22, -30):
+        for Z in (3, 5, 8, 12):
+            for X in (0.33 * pitch.length, 0.5 * pitch.length, 0.67 * pitch.length):
+                def res(z):
+                    cam = PTZCamera(z[:3], z[3], pitch=pitch, width=width, height=height)
+                    uv, _ = cam.project_ours(np.array([lm[n] for n in names]), z[4:])
+                    return np.r_[((uv - uvs) / 2).ravel(), Aligner(cam).residuals(z[4:], ev), z[3] / 0.03]
+                d = np.hypot(pitch.length / 2 - X, pitch.width / 2 - Y)
+                z0 = [X, Y, Z, 0.0, np.arctan2(pitch.length / 2 - X, pitch.width / 2 - Y), np.arctan2(Z, d) - 0.1,
+                      700.0 * width / 640]
+                lo, hi = [-30, -80, 1, -0.1, -1.7, -0.3, 150], [135, -0.3, 40, 0.1, 1.7, 0.7, 8000]
+                try:
+                    s = least_squares(res, z0, bounds=(lo, hi), x_scale=[1, 1, 1, 0.01, 0.01, 0.01, 20],
+                                      diff_step=1e-4, loss="soft_l1", max_nfev=80)
+                except ValueError:
+                    continue
+                c = float((s.fun ** 2).sum())
+                if best is None or c < best[0]:
+                    best = (c, s.x)
+    z = best[1]
+    return PTZCamera(z[:3], z[3], pitch=pitch, width=width, height=height), z[4:]
+
+
+def landmark_errors(cam: "PTZCamera", p, points: dict) -> np.ndarray:
+    """Pixel distance between clicked landmarks and their projection with pose ``p``."""
+    lm = cam.pitch.landmarks()
+    names = [n for n in points if n in lm]
+    if not names:
+        return np.zeros(0)
+    uv, _ = cam.project_ours(np.array([lm[n] for n in names]), p)
+    return np.linalg.norm(uv - np.array([points[n] for n in names], float), axis=1)
+
+
+def camera_from_homography(points: dict, pitch: Pitch, width: int, height: int, ransac_frac: float = 0.03):
+    """Closed-form camera from >= 4 clicked landmarks of one frame (milliseconds instead of a multi-start search).
+
+    Plane-to-image homography (RANSAC: a mislabelled click is found and reported) -> focal length from the two
+    rotation constraints (principal point at the image centre) -> rotation, camera centre C -> pan / tilt / roll.
+    Returns ``(C, roll, (pan, tilt, f), inlier names, outlier names)`` or None."""
+    lm = pitch.landmarks()
+    names = [n for n in points if n in lm]
+    if len(names) < 4:
+        return None
+    X = np.array([lm[n] for n in names], float)
+    uv = np.array([points[n] for n in names], float)
+    Hh, inl = cv2.findHomography(X, uv, cv2.RANSAC if len(names) > 4 else 0, ransac_frac * width)
+    if Hh is None:
+        return None
+    inl = np.ones(len(names), bool) if inl is None else inl.ravel().astype(bool)
+    M = np.array([[1.0, 0, 0], [0, -1.0, pitch.width], [0, 0, 1.0]])         # ours <-> world (an involution)
+    G = np.array([[1.0, 0, -width / 2], [0, 1.0, -height / 2], [0, 0, 1.0]]) @ Hh @ M
+    h1, h2 = G[:, 0], G[:, 1]
+    cands = []
+    if abs(h1[2] * h2[2]) > 1e-12:
+        cands.append(-(h1[0] * h2[0] + h1[1] * h2[1]) / (h1[2] * h2[2]))
+    if abs(h1[2] ** 2 - h2[2] ** 2) > 1e-12:
+        cands.append(-(h1[0] ** 2 + h1[1] ** 2 - h2[0] ** 2 - h2[1] ** 2) / (h1[2] ** 2 - h2[2] ** 2))
+    pos = [c for c in cands if c > 0]
+    f = float(np.sqrt(np.median(pos))) if pos else float(width)
+    A = np.diag([1 / f, 1 / f, 1.0]) @ G
+    lam = 2.0 / (np.linalg.norm(A[:, 0]) + np.linalg.norm(A[:, 1]))
+    best = None
+    for sg in (1.0, -1.0):
+        r1, r2, t = sg * lam * A[:, 0], sg * lam * A[:, 1], sg * lam * A[:, 2]
+        U, _, Vt = np.linalg.svd(np.c_[r1, r2, np.cross(r1, r2)])
+        R = U @ Vt
+        if np.linalg.det(R) < 0:
+            continue
+        C = -R.T @ t
+        if C[2] > 0:                                    # camera above the ground
+            best = (R, C)
+    if best is None:
+        return None
+    R, C = best
+    sol = None
+    for pan in np.linspace(-1.6, 1.6, 9):
+        s_ = least_squares(lambda q: (rotation(q[0], q[1], q[2]) - R).ravel(), [pan, 0.1, 0.0])
+        if sol is None or s_.cost < sol.cost:
+            sol = s_
+    pan, tilt, roll = sol.x
+    roll = float((roll + np.pi) % (2 * np.pi) - np.pi)
+    return (C, roll, np.array([pan, tilt, f]), [n for n, k in zip(names, inl) if k],
+            [n for n, k in zip(names, inl) if not k])
+
+
+def _pose_given_camera(cam: "PTZCamera", points: dict, p0) -> np.ndarray:
+    lm = cam.pitch.landmarks()
+    names = [n for n in points if n in lm]
+    X = np.array([lm[n] for n in names])
+    uvs = np.array([points[n] for n in names], float)
+
+    def res(p):
+        uv, front = cam.project_ours(X, p)
+        return np.where(front[:, None], uv - uvs, 500.0).ravel()
+    return least_squares(res, np.asarray(p0, float), bounds=([-1.7, -0.3, 150], [1.7, 0.7, 8000]),
+                         x_scale=[0.01, 0.01, 20], loss="soft_l1", f_scale=3.0, max_nfev=200).x
+
+
+def solve_from_landmarks(frames: List[tuple], pitch: Pitch, ignore=(), fit_pitch: bool = False,
+                         verbose: bool = False, outlier_px: Optional[float] = None) -> tuple:
+    """Venue camera from the landmark frames clicked in the setup UI only (no video tracking needed).
+
+    ``frames``: [(image, {landmark: [u, v]}), ...] at the working resolution.
+
+    1. closed-form camera per frame (:func:`camera_from_homography`); clicks that do not fit the pitch model of their
+       frame (RANSAC) are dropped and reported — typically a landmark given the wrong name;
+    2. the camera of the frame with the most consistent clicks starts the fit; every frame gets its pose from its own
+       clicks with that camera (multi-start search only when no closed form exists);
+    3. bundle adjustment of C / roll / poses with the clicks AND the white lines of every frame;
+    4. clicks still farther than ``outlier_px`` from their projection are dropped and step 3 is repeated once.
+
+    Returns (PTZCamera, [pose per input frame], [errors px per input frame], {frame index: [dropped clicks]})."""
+    h, w = frames[0][0].shape[:2]
+    outlier_px = outlier_px or 0.03 * w
+    inits, kept = {}, []
+    dropped = {i: [] for i in range(len(frames))}
+    for i, (_, pts) in enumerate(frames):
+        r = camera_from_homography(pts, pitch, w, h)
+        if r is not None:
+            inits[i] = r
+            dropped[i] = list(r[4])
+        kept.append({k: v for k, v in pts.items() if k not in dropped[i]})
+    if inits:
+        i0 = max(inits, key=lambda i: len(inits[i][3]))
+        C, roll, p0 = inits[i0][:3]
+        cam = PTZCamera(np.asarray(C, float), roll, pitch=pitch, width=w, height=h)
+    else:                                               # fewer than 4 clicks everywhere: slow multi-start search
+        i0 = max(range(len(frames)), key=lambda i: len(frames[i][1]))
+        cam, p0 = initial_fit(frames[i0][0], frames[i0][1], ignore, pitch)
+    P0 = []
+    for i, (img, _) in enumerate(frames):
+        if i in inits:
+            p = _pose_given_camera(cam, kept[i], inits[i][2])
+        else:
+            p, _ = pose_from_landmarks(cam, Evidence(img, None, ignore), kept[i], cam.pitch)
+        P0.append(p)
+    evs = [Evidence(img, None, ignore) for img, _ in frames]
+    for it in range(2):
+        cam, P, _ = bundle_adjust(cam, evs, np.vstack(P0), kept, fit_pitch=fit_pitch, verbose=verbose,
+                                  taus=(15.0, 8.0), max_nfev=60)
+        P0 = list(P)
+        again = False
+        for i in range(len(frames)):
+            e = landmark_errors(cam, P0[i], kept[i])
+            names = [n for n in kept[i] if n in cam.pitch.landmarks()]
+            bad = [n for n, ee in zip(names, e) if ee > max(outlier_px, 3 * float(np.median(e)))]
+            if bad and len(names) - len(bad) >= 4:
+                dropped[i] += bad
+                kept[i] = {k: v for k, v in kept[i].items() if k not in bad}
+                again = True
+        if not again:
+            break
+    errs = [landmark_errors(cam, P0[i], kept[i]) for i in range(len(frames))]
+    return cam, P0, errs, dropped
 
 
 def pose_from_landmarks(cam, ev, points, pitch, pan_step: float = 0.08, use_lines: bool = True):

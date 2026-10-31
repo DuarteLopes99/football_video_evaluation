@@ -200,7 +200,8 @@ class KitClassifier:
     themselves (each sample classified by the others) — an honest estimate of how separable the kits are.
     """
 
-    def __init__(self, samples: dict, outlier_quantile: float = 0.97, outlier_factor: float = 1.6, k: int = 2):
+    def __init__(self, samples: dict, outlier_quantile: float = 0.97, outlier_factor: float = 1.6, k: int = 2,
+                 prune: bool = True):
         self.samples = {c: np.asarray(v, float).reshape(len(v), -1) for c, v in samples.items() if len(v)}
         if "team0" not in self.samples or "team1" not in self.samples:
             raise ValueError("KitClassifier needs at least one clicked sample of each team's outfield kit")
@@ -208,7 +209,31 @@ class KitClassifier:
         self.q, self.f, self.k = outlier_quantile, outlier_factor, k
         self.thr = np.inf
         self.report: dict = {}
+        self.pruned = self._prune_conflicts() if prune else []
         self._fit_from_samples()
+        self.report["ignored_samples"] = self.pruned
+
+    def _prune_conflicts(self) -> list:
+        """Ignore clicked OUTFIELD samples that the other clicks put in the other team (leave-one-out): on the Canedo
+        1080p setup two 'UD Mansores' clicks were mostly grass in the shade and pulled every yellow Canedo shirt in the
+        shade to Mansores. Goalkeeper / referee samples are never dropped (often a single click)."""
+        out = []
+        for c, other in (("team0", "team1"), ("team1", "team0")):
+            S = self.samples[c]
+            if len(S) < 4:
+                continue
+            bad = []
+            for i in range(len(S)):
+                d = self._dist(S[i:i + 1], exclude=(c, i))[0]
+                if self.classes[int(np.argmin(d))] == other:
+                    bad.append(i)
+            if bad and len(S) - len(bad) >= 3:
+                out += [(c, i) for i in bad]
+        for c in ("team0", "team1"):
+            idx = [i for cc, i in out if cc == c]
+            if idx:
+                self.samples[c] = np.delete(self.samples[c], idx, axis=0)
+        return [f"{c}#{i}" for c, i in out]
 
     # ---- distances
     def _dist(self, X: np.ndarray, exclude: Optional[tuple] = None) -> np.ndarray:

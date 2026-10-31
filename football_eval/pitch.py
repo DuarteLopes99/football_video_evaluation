@@ -326,6 +326,9 @@ def build_provider(cfg, pitch: Pitch, fps: float) -> Optional[HomographyProvider
         prov = PTZProvider(cam, cfg.video.ignore_regions, refine_every=pc.ptz_refine_every, init_params=init,
                            max_err=pc.ptz_max_err_px)
         prov.anchor_frame = k if anchors else None
+        prov.init_candidates = [np.asarray(v, float) for v in anchors.values()]
+        prov.anchors = {int(k): np.asarray(v, float) for k, v in anchors.items()}
+        prov.anchor_snap_frames = max(2, int(round(fps / max(cfg.video.analysis_fps, 1e-6))))
         return prov
     if pc.homography == "flow":
         anchors = {}

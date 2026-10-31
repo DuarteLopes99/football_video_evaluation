@@ -25,6 +25,7 @@ import pandas as pd
 from .ball import clean_ball
 from .config import Config
 from .detection import build_detector
+from .people import frame_types, grass_roi, grass_top, people_summary, track_types, zones
 from .pitch import Pitch, build_provider
 from .scoreboard import ScoreboardWatcher
 from .teams import (CODE, CODE_NAME, KitClassifier, TeamClassifier, TrackVotes, apply_manual, person_like,
@@ -95,7 +96,12 @@ def run_perception(video_path: str, cfg: Config, progress: bool = True, max_fram
     prev_H, prev_top = None, None
     for f, t, img in iter_frames(video_path, cfg.video.analysis_fps, windows=windows,
                                  resize_width=cfg.video.resize_width):
+        gtop = grass_top(img)                                   # far edge of the grass (no calibration needed)
         roi = pitch_roi(prev_H, pitch, img.shape, prev_top) if (cfg.detection.pitch_roi and prev_H is not None) else None
+        if roi is None and cfg.detection.pitch_roi:             # no / lost calibration: skip the sky and the terraces
+            roi = grass_roi(gtop, img.shape)
+            if roi is not None and prev_top is not None:
+                roi = (0, int(min(roi[1], max(prev_top - 0.05 * img.shape[0], 0))), roi[2], roi[3])
         det = detector(img, roi=roi)
         people = det.of("player", "goalkeeper", "referee")
         prev_top = float(people.xyxy[:, 1].min()) if len(people) else None      # ROI never cuts a seen player
@@ -104,11 +110,13 @@ def run_perception(video_path: str, cfg: Config, progress: bool = True, max_fram
         prev_H = H
         foot, edge = foot_points(people.xyxy, img.shape)
         xy = H.to_pitch(foot) if (H is not None and len(foot)) else np.full((len(foot), 2), np.nan)
+        zone = zones(xy, foot, people.xyxy, pitch, gtop, cfg.pitch.offpitch_margin_m, cfg.pitch.staff_band_m)
+        ptype = frame_types(img, people.xyxy, zone, cfg.pitch.hivis_min_share)
         do_feat = (n % team_every == 0)
         desc = teams.describe(img, people.xyxy) if do_feat and len(people) else [None] * len(people)
         codes = np.full(len(people), -1, int)
         if kit is not None:
-            ok = [k for k in range(len(people)) if desc[k] is not None]
+            ok = [k for k in range(len(people)) if desc[k] is not None and ptype[k] is None]   # kits: pitch only
             if ok:
                 codes[ok] = kit.predict(np.asarray([desc[k] for k in ok]))
                 votes.add(ids[ok], codes[ok])
@@ -117,16 +125,15 @@ def run_perception(video_path: str, cfg: Config, progress: bool = True, max_fram
         for k in range(len(people)):
             r = len(rows)
             rows.append((f, t, int(ids[k]), people.cls[k], float(people.conf[k]), *people.xyxy[k], *foot[k], *xy[k],
-                         int(edge[k])))
-            if desc[k] is not None and (ids[k] >= 0 or not min_hits_for_team):
+                         int(edge[k]), zone[k], ptype[k]))
+            if desc[k] is not None and ptype[k] is None and (ids[k] >= 0 or not min_hits_for_team):
                 feats.append(desc[k])
                 feat_rows.append(r)
         balls = det.of("ball") if cfg.ball.detector in ("model", "both") else det.of("__none__")
         n_ball0 = len(ball_rows)
         if motion_ball is not None and H is not None:
-            ev = getattr(provider, "last_evidence", None)
             for u, v, sc in motion_ball(img, getattr(provider, "last_image_motion", None),
-                                        None if ev is None else ev.field, people.xyxy):
+                                        getattr(provider, "last_field", None), people.xyxy):
                 bxy = H.to_pitch(np.array([[u, v]]))[0]
                 ball_rows.append((f, t, float(min(0.99, max(0.05, sc / 3))), u, v, *bxy))
         if len(balls):
@@ -135,7 +142,7 @@ def run_perception(video_path: str, cfg: Config, progress: bool = True, max_fram
             for k in range(len(balls)):
                 ball_rows.append((f, t, float(balls.conf[k]), *bf[k], *bxy[k]))
         if live is not None and live.due():
-            labels = [CODE_NAME.get(votes.label(int(ids[k]), int(codes[k])) if ids[k] >= 0 else int(codes[k]))
+            labels = [ptype[k] or CODE_NAME.get(votes.label(int(ids[k]), int(codes[k])) if ids[k] >= 0 else int(codes[k]))
                       for k in range(len(people))]
             manual = [int(ids[k]) in votes.manual for k in range(len(people))]
             live.update(n + 1, f, t, img, people, ids, xy, H, provider,
@@ -152,7 +159,7 @@ def run_perception(video_path: str, cfg: Config, progress: bool = True, max_fram
         if max_frames and n >= max_frames:
             break
 
-    cols = ["frame", "t", "track_id", "cls", "conf", "x0", "y0", "x1", "y1", "u", "v", "x", "y", "edge"]
+    cols = ["frame", "t", "track_id", "cls", "conf", "x0", "y0", "x1", "y1", "u", "v", "x", "y", "edge", "zone", "ptype"]
     tracks = pd.DataFrame(rows, columns=cols)
     frames = pd.DataFrame(frame_rows, columns=["frame", "t", "has_h", "n_people", "vis_near_y", "n_tiles", "roi_top"])
     ball_raw = pd.DataFrame(ball_rows, columns=["frame", "t", "conf", "u", "v", "x", "y"])
@@ -199,10 +206,22 @@ def run_perception(video_path: str, cfg: Config, progress: bool = True, max_fram
                 assignment["team"] = assignment.team.map({0: 1, 1: 0, -1: -1})
                 print("[teams] cluster order swapped to match teams.kit_colors")
     tracks.loc[tracks.cls == "referee", "team"] = -1
-    # people standing clearly outside the pitch (bench, staff, ball boys, crowd) are not players
-    off = tracks.x.notna() & ~pitch.in_pitch(tracks.x.fillna(0), tracks.y.fillna(0), cfg.pitch.offpitch_margin_m)
-    tracks.loc[off, "cls"] = "outside"
-    tracks.loc[off, "team"] = -1
+    # people off the pitch (fans in the stands, coaches / bench / ball boys, stewards) are not players: per track,
+    # the off-pitch type seen in most of its frames (football_eval/people.py)
+    tt = track_types(tracks)
+    off_tr = tracks.track_id.map(tt)
+    loose = (tracks.track_id < 0) & tracks.ptype.notna()
+    off_tr = off_tr.where(~loose, tracks.ptype)
+    sel = off_tr.notna()
+    tracks.loc[sel, "cls"] = off_tr[sel]
+    tracks.loc[sel, "team"] = -1
+    if assignment is not None and len(assignment) and len(tt):
+        assignment["person_type"] = assignment.track_id.map(tt)
+        hit = assignment.person_type.notna()
+        assignment.loc[hit, ["team", "role", "decision"]] = [-1, None, "off the pitch"]
+        assignment.loc[hit, "role"] = assignment.loc[hit, "person_type"]
+    people_tab = people_summary(tracks)
+    print("[people] " + ", ".join(f"{r.type} {r.tracks} tracks ({r.per_frame}/frame)" for r in people_tab.itertuples()))
 
     camera_log = pd.DataFrame(provider.log) if getattr(provider, "log", None) else None
     if camera_log is not None and len(camera_log):
@@ -222,7 +241,13 @@ def run_perception(video_path: str, cfg: Config, progress: bool = True, max_fram
                           windows=[[round(a, 1), round(b, 1)] for a, b in windows]),
             "visibility": visibility_summary(frames, pitch),
             "scoreboard_changes": sb.changes if sb else [], "config": cfg.to_dict(), "teams": team_report,
-            "seeds": seed_log}
+            "seeds": seed_log, "people": people_tab.to_dict(orient="records"),
+            "calibration": dict(mode=cfg.pitch.homography, file=cfg.pitch.calibration_file,
+                                frames_with_pose=round(float(frames.has_h.mean()), 3) if len(frames) else 0.0,
+                                frames_usable=round(float(frames.cam_ok.mean()), 3) if "cam_ok" in frames and len(frames)
+                                else None,
+                                first_frame=getattr(provider, "init_report", None),
+                                anchors_passed=getattr(provider, "anchor_hits", None))}
     out = {"tracks": tracks, "ball": ball, "ball_raw": ball_raw, "frames": frames, "meta": meta}
     if assignment is not None:
         out["team_assignment"] = assignment                     # per-track votes: why each player got his team
@@ -327,12 +352,29 @@ def build_kit_bank(video_path: str, cfg: Config, teams: TeamClassifier, detector
     descriptor as the match crops. Returns (KitClassifier | None, {frame: [(box, code)]}, report)."""
     scale = (cfg.video.resize_width / info.width) if cfg.video.resize_width else 1.0
     samples, seeds = {}, {}
-    rep = dict(clicked=0, snapped=0, kept_as_drawn=0, dropped=0)
+    rep = dict(clicked=0, snapped=0, kept_as_drawn=0, dropped=0, stored_descriptor=0)
     by_frame = {}
+    from .teams import DESC_DIM
     for cls, items in (cfg.teams.kit_samples or {}).items():
         for it in items:
-            fr = int(it.get("frame", round(float(it["t"]) * info.fps)))
-            by_frame.setdefault(fr, []).append((cls, it))
+            fr = it.get("frame")
+            if fr is None and it.get("t") is not None:
+                fr = round(float(it["t"]) * info.fps)
+            fr = -1 if fr is None else int(fr)
+            d = it.get("desc")
+            if cfg.teams.backend == "color" and d is not None and len(d) == DESC_DIM:
+                # the setup UI stored the descriptor of the snapped box: use it as is (no seek + detector per click,
+                # and samples clicked outside a cut segment still count)
+                rep["clicked"] += 1
+                rep["stored_descriptor"] += 1
+                samples.setdefault(cls, []).append(np.asarray(d, np.float32))
+                if 0 <= fr < info.n_frames and it.get("box") is not None:
+                    seeds.setdefault(fr, []).append((np.asarray(it["box"], float) * scale, CODE[cls]))
+                continue
+            if 0 <= fr < info.n_frames:
+                by_frame.setdefault(fr, []).append((cls, it))
+            else:
+                rep["dropped"] += 1
     cap = cv2.VideoCapture(video_path)
     try:
         for fr, items in sorted(by_frame.items()):
@@ -373,9 +415,13 @@ def build_kit_bank(video_path: str, cfg: Config, teams: TeamClassifier, detector
     except ValueError as e:
         print(f"[teams] kit samples ignored: {e}")
         return None, {}, rep
-    rep.update(loo_accuracy=kit.report.get("loo_accuracy"), loo_n=kit.report.get("loo_n"))
-    print(f"[teams] {rep['clicked']} clicked players: {rep['snapped']} snapped to the detector box, "
-          f"{rep['kept_as_drawn']} kept as drawn, {rep['dropped']} dropped; leave-one-out "
+    rep.update(loo_accuracy=kit.report.get("loo_accuracy"), loo_n=kit.report.get("loo_n"),
+               ignored_samples=kit.report.get("ignored_samples"))
+    if kit.pruned:
+        print(f"[teams] ignored {len(kit.pruned)} clicked sample(s) that the other clicks put in the other team "
+              f"({', '.join(kit.pruned)} = class#index in the setup's kits): re-click them in the setup")
+    print(f"[teams] {rep['clicked']} clicked players: {rep['stored_descriptor']} with the descriptor saved by the setup UI, "
+          f"{rep['snapped']} snapped to the detector box, {rep['kept_as_drawn']} kept as drawn, {rep['dropped']} dropped; leave-one-out "
           f"{kit.report.get('loo_accuracy')} of {kit.report.get('loo_n')}")
     return kit, seeds, rep
 

@@ -19,7 +19,7 @@ class VideoCfg:
     end_s: Optional[float] = None       # None = until the end of the file
     resize_width: Optional[int] = None  # downscale before detection (None = native)
     only_periods: bool = True           # with periods set in the setup: skip pre-match, half-time and post-match
-    period_margin_s: float = 20.0       # ... keeping this much video before / after each period
+    period_margin_s: float = 0.0        # ... keeping this much video before / after each period (0 = game only)
     ignore_regions: list = dc.field(default_factory=list)  # [[x0,y0,x1,y1], ...] overlays (scoreboard, logos)
 
 
@@ -75,6 +75,8 @@ class PitchCfg:
     keypoint_layout: str = "roboflow32"
     keypoint_conf: float = 0.5
     offpitch_margin_m: float = 2.5      # people further outside the lines are bench / staff / crowd
+    staff_band_m: float = 9.0           # ... up to this far beyond that margin: staff / bench / ball boys; farther: fans
+    hivis_min_share: float = 0.30       # torso share of fluorescent pixels -> steward (security) when off the pitch
     ptz_refine_every: int = 1           # ptz: align the pitch template to the white lines every N frames
     ptz_max_err_px: float = 4.0         # ptz: mean line error (px) above which the tracker tries to relocalise
     reanchor_every_s: float = 0.0       # flow mode: force re-anchoring with keypoint model (0 = never)
