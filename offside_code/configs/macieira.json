@@ -1,0 +1,507 @@
+{
+  "name": "Cerqueira vs Macieira - handheld phone, panning from one seat",
+  "models_dir": "models",
+  "output_dir": "outputs/macieira",
+  "seed": 0,
+  "decision_frame": {
+    "image": "data/cerqueira_macieira.png",
+    "features": [
+      {
+        "element": "penalty_area_right_front",
+        "polyline": [
+          [
+            1240,
+            815
+          ],
+          [
+            2570,
+            982
+          ]
+        ],
+        "band": 14
+      },
+      {
+        "element": "penalty_area_right_near",
+        "polyline": [
+          [
+            2600,
+            981
+          ],
+          [
+            2930,
+            934
+          ]
+        ],
+        "band": 14
+      },
+      {
+        "element": "goal_area_right_front",
+        "polyline": [
+          [
+            1950,
+            826
+          ],
+          [
+            2361,
+            875
+          ]
+        ],
+        "band": 12
+      },
+      {
+        "element": "goal_area_right_near",
+        "polyline": [
+          [
+            2370,
+            874
+          ],
+          [
+            2520,
+            862
+          ]
+        ],
+        "band": 10
+      },
+      {
+        "element": "goal_line_right",
+        "polyline": [
+          [
+            2560,
+            866
+          ],
+          [
+            2930,
+            899
+          ]
+        ],
+        "band": 12
+      },
+      {
+        "element": "centre_circle",
+        "polyline": [
+          [
+            0,
+            921
+          ],
+          [
+            200,
+            930
+          ],
+          [
+            330,
+            945
+          ],
+          [
+            398,
+            966
+          ],
+          [
+            330,
+            1005
+          ],
+          [
+            200,
+            1050
+          ],
+          [
+            0,
+            1081
+          ]
+        ],
+        "band": 12
+      }
+    ],
+    "inside_pitch": [
+      [
+        0,
+        1400
+      ],
+      [
+        500,
+        1600
+      ],
+      [
+        1200,
+        1620
+      ],
+      [
+        2000,
+        1400
+      ]
+    ],
+    "ignore_regions": [
+      [
+        0,
+        0,
+        2936,
+        700
+      ],
+      [
+        0,
+        700,
+        810,
+        820
+      ],
+      [
+        1560,
+        700,
+        1810,
+        795
+      ],
+      [
+        2330,
+        700,
+        2936,
+        880
+      ],
+      [
+        2300,
+        1350,
+        2936,
+        1632
+      ]
+    ],
+    "occluding_regions": [],
+    "ball_pixel": [
+      849,
+      812
+    ],
+    "player_min_y": 700
+  },
+  "aux_frames": [
+    {
+      "name": "free_kick",
+      "image": "data/calibration_frames/calibration_macieira_1.png",
+      "features": [
+        {
+          "element": "penalty_area_right_front",
+          "polyline": [
+            [
+              730,
+              786
+            ],
+            [
+              2050,
+              936
+            ]
+          ],
+          "band": 14
+        },
+        {
+          "element": "penalty_area_right_near",
+          "polyline": [
+            [
+              2090,
+              935
+            ],
+            [
+              2510,
+              867
+            ]
+          ],
+          "band": 14
+        },
+        {
+          "element": "penalty_area_right_far",
+          "polyline": [
+            [
+              720,
+              782
+            ],
+            [
+              1100,
+              750
+            ]
+          ],
+          "band": 10
+        },
+        {
+          "element": "goal_line_right",
+          "polyline": [
+            [
+              2030,
+              828
+            ],
+            [
+              2920,
+              897
+            ]
+          ],
+          "band": 12
+        }
+      ],
+      "inside_pitch": [
+        [
+          0,
+          1300
+        ],
+        [
+          600,
+          1550
+        ],
+        [
+          1200,
+          1590
+        ],
+        [
+          1700,
+          1300
+        ]
+      ],
+      "ignore_regions": [
+        [
+          0,
+          0,
+          2934,
+          680
+        ],
+        [
+          2300,
+          1000,
+          2934,
+          1598
+        ]
+      ]
+    },
+    {
+      "name": "centre",
+      "image": "data/calibration_frames/calibration_macieira.png",
+      "features": [
+        {
+          "element": "halfway_line",
+          "polyline": [
+            [
+              1775,
+              790
+            ],
+            [
+              1786,
+              1640
+            ]
+          ],
+          "band": 12
+        },
+        {
+          "element": "centre_circle",
+          "polyline": [
+            [
+              1201,
+              918
+            ],
+            [
+              1470,
+              874
+            ],
+            [
+              1779,
+              860
+            ],
+            [
+              2132,
+              874
+            ],
+            [
+              2406,
+              940
+            ],
+            [
+              2132,
+              999
+            ],
+            [
+              1779,
+              1010
+            ],
+            [
+              1470,
+              992
+            ],
+            [
+              1201,
+              918
+            ]
+          ],
+          "band": 14
+        },
+        {
+          "element": "penalty_area_left_front",
+          "polyline": [
+            [
+              0,
+              860
+            ],
+            [
+              430,
+              797
+            ]
+          ],
+          "band": 12
+        },
+        {
+          "element": "penalty_area_left_far",
+          "polyline": [
+            [
+              0,
+              790
+            ],
+            [
+              430,
+              795
+            ]
+          ],
+          "band": 8
+        }
+      ],
+      "inside_pitch": [
+        [
+          0,
+          1630
+        ],
+        [
+          1000,
+          1640
+        ],
+        [
+          2000,
+          1640
+        ],
+        [
+          2930,
+          1630
+        ]
+      ],
+      "ignore_regions": [
+        [
+          0,
+          0,
+          2940,
+          740
+        ],
+        [
+          0,
+          1645,
+          2940,
+          1670
+        ]
+      ]
+    }
+  ],
+  "teams": [
+    {
+      "team": "RED",
+      "rules": [
+        {
+          "region": "torso",
+          "hsv_lo": [
+            170,
+            70,
+            70
+          ],
+          "hsv_hi": [
+            180,
+            255,
+            255
+          ],
+          "min": 0.4
+        }
+      ]
+    },
+    {
+      "team": "RED",
+      "rules": [
+        {
+          "region": "torso",
+          "hsv_lo": [
+            20,
+            120,
+            120
+          ],
+          "hsv_hi": [
+            35,
+            255,
+            255
+          ],
+          "min": 0.4
+        }
+      ]
+    },
+    {
+      "team": "GRN",
+      "rules": [
+        {
+          "region": "torso",
+          "hsv_lo": [
+            35,
+            30,
+            20
+          ],
+          "hsv_hi": [
+            95,
+            255,
+            255
+          ],
+          "min": 0.4
+        }
+      ]
+    },
+    {
+      "team": "REF",
+      "rules": [
+        {
+          "region": "torso",
+          "hsv_lo": [
+            0,
+            0,
+            0
+          ],
+          "hsv_hi": [
+            180,
+            255,
+            50
+          ],
+          "min": 0.9
+        }
+      ]
+    },
+    {
+      "team": "GRN",
+      "rules": []
+    }
+  ],
+  "team_overrides": {},
+  "scenarios": [
+    {
+      "attacking": "GRN",
+      "defending": "RED",
+      "direction": "right",
+      "gk_visible": true
+    }
+  ],
+  "priors": {
+    "half_length": [
+      52.5,
+      2.5
+    ],
+    "half_width": [
+      34.0,
+      2.0
+    ],
+    "shoulder_h": [
+      1.4,
+      0.25
+    ],
+    "pp_sigma": 40
+  },
+  "monte_carlo": {
+    "n": 150,
+    "seed": 1
+  },
+  "draw_elements": [
+    "penalty_area_right_front",
+    "penalty_area_right_near",
+    "goal_area_right_front",
+    "goal_line_right",
+    "centre_circle"
+  ],
+  "show_metrics": true
+}

@@ -1,0 +1,19 @@
+# core (no PyTorch needed). Runs on the CPU; a GPU is used automatically when there is one (football_eval/accel.py):
+# start.command / start.bat swap onnxruntime for onnxruntime-gpu[cuda,cudnn] when nvidia-smi finds an NVIDIA GPU.
+numpy>=1.24
+scipy>=1.10
+pandas>=2.0
+opencv-python>=4.9      # video decoding; cv2.dnn runs YOLOX when onnxruntime is missing
+onnxruntime>=1.17       # YOLOX ~2x faster than cv2.dnn on CPU; CoreML provider on Apple Silicon (GPU: onnxruntime-gpu / -directml)
+scikit-learn>=1.3
+matplotlib>=3.7
+pyyaml>=6.0
+jupyter                 # notebooks
+
+# optional upgrades (uncomment when needed)
+# ultralytics>=8.3      # YOLO11 / YOLO26 / RT-DETR detectors and pitch-keypoint pose models (PyTorch; cuda:0 / mps picked automatically;
+#                       # on NVIDIA install the CUDA build of torch first: https://pytorch.org/get-started/locally/)
+# supervision>=0.25     # ByteTrack (tracking.backend: bytetrack)
+# transformers>=4.45    # SigLIP team embeddings (teams.backend: siglip)
+# pytesseract           # scoreboard OCR
+# statsbombpy           # re-download the xG training data

@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Offside studio</title>
+<style>
+:root{
+  --bg:#121417; --panel:#1b1e22; --panel2:#23272c; --line:#30353b; --text:#e7e9ec; --muted:#9aa1a9;
+  --accent:#8fd16a; --accent2:#5fb3f0; --ok:#4fbf7f; --warn:#e3a73c; --bad:#e5594f; --flag:#f2a93b;
+  --off:#ffd400; --on:#50ff50; --mag:#ff3df2; --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:13.5px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;display:flex;flex-direction:column;overflow:hidden}
+a{color:var(--accent2)}
+.top{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line);background:#16191c;flex-wrap:wrap}
+.top .sp{flex:1}
+select,input[type=text],input[type=number],textarea{background:#111316;color:var(--text);border:1px solid var(--line);border-radius:6px;padding:5px 7px;font:inherit;font-size:13px}
+textarea{width:100%;font:11.5px/1.4 var(--mono);min-height:150px}
+button.b{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:5px 11px;cursor:pointer;font:inherit;font-size:13px;white-space:nowrap}
+button.b:hover{border-color:#4a5058} button.b:disabled{opacity:.45;cursor:default}
+button.b.primary{background:var(--accent);color:#122008;border-color:var(--accent);font-weight:600}
+button.b.blue{background:#1d3c57;border-color:#2c5a82;color:#d6ebfc}
+button.b.danger{background:#3d1f1d;border-color:#7a3530}
+button.b.sm{padding:2px 8px;font-size:12px}
+button.b.on{border-color:var(--accent);background:#25331d}
+.steps{display:flex;gap:2px}
+.steps button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:6px 12px;font:inherit;font-weight:500;cursor:pointer}
+.steps button.on{color:var(--text);border-bottom-color:var(--accent)}
+.steps button .n{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--panel2);font-size:11px;margin-right:5px}
+.steps button.done .n{background:var(--ok);color:#0d1a12}
+.pill{font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--panel2);color:var(--muted);white-space:nowrap}
+.pill.ok{background:#1f3a2a;color:#a8e6bf} .pill.warn{background:#3a2f17;color:#f1cc85} .pill.run{background:#18324a;color:#a9d4f7} .pill.bad{background:#3d1f1d;color:#f3aaa4}
+.main{flex:1;display:grid;grid-template-columns:210px minmax(0,1fr) 350px;min-height:0}
+#frames{border-right:1px solid var(--line);background:var(--panel);overflow:auto;display:flex;flex-direction:column}
+#frames h2,.panel h2{font-size:11.5px;margin:0 0 6px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;font-weight:600}
+.fl{padding:10px 8px;display:flex;flex-direction:column;gap:6px}
+.fr{border:1px solid transparent;border-radius:8px;padding:5px;cursor:pointer;background:transparent;color:var(--text);text-align:left;font:inherit;width:100%}
+.fr:hover{background:var(--panel2)} .fr.sel{border-color:#3b4652;background:var(--panel2)}
+.fr img{width:100%;border-radius:5px;display:block;aspect-ratio:16/9;object-fit:cover;background:#000}
+.fr .nm{font-size:11.5px;overflow-wrap:anywhere;margin-top:3px}
+.fr .tg{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.tag{font-size:10.5px;padding:0 5px;border-radius:4px;background:#2c3238;color:#c4cad1}
+.tag.ok{background:#1f3a2a;color:#a8e6bf} .tag.ref{background:#3a3010;color:#ffd77a} .tag.warn{background:#3a2a10;color:var(--flag)} .tag.off{opacity:.55}
+.drop{margin:4px 8px 10px;border:1.5px dashed #3b434c;border-radius:10px;padding:10px;text-align:center;color:var(--muted);font-size:12px;cursor:pointer}
+.drop.over{border-color:var(--accent);color:var(--accent);background:#1a2416}
+#stagewrap{display:flex;flex-direction:column;min-width:0;min-height:0}
+.toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:7px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
+.toolbar .sep{width:1px;height:20px;background:var(--line);margin:0 3px}
+.toolbar label{display:flex;align-items:center;gap:4px;font-size:12.5px;color:#c9ced4}
+#stage{position:relative;flex:1;min-height:0;background:#0b0c0e;overflow:hidden}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+#resimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:none;cursor:zoom-in}
+#loupe{position:absolute;right:10px;bottom:10px;width:170px;height:170px;border:1px solid #555;border-radius:8px;background:#000;pointer-events:none;display:none}
+#msg{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);text-align:center;padding:30px;pointer-events:none}
+.status{padding:5px 10px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap;background:var(--panel)}
+.status b{color:#c9ced4;font-weight:500}
+.panel{border-left:1px solid var(--line);background:var(--panel);overflow:auto;padding:12px 12px 30px}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 11px;margin-bottom:10px}
+.card h3{font-size:13.5px;margin:0 0 6px}
+.note{color:var(--muted);font-size:12px}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:5px 0}
+.row>.g{flex:1}
+.items{display:flex;flex-direction:column;gap:3px;margin-top:6px;max-height:240px;overflow:auto}
+.it{display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:5px;background:#1b1e22;font-size:12px}
+.it .sw{width:10px;height:10px;border-radius:2px;flex:none}
+.it .t{flex:1;overflow-wrap:anywhere}
+.it .x{cursor:pointer;color:var(--muted);padding:0 4px} .it .x:hover{color:var(--bad)}
+.chk{display:flex;align-items:center;gap:6px;font-size:12.5px;color:#c9ced4;margin:3px 0}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px}
+.kv span:nth-child(odd){color:var(--muted)}
+pre.log{background:#0b0c0e;border:1px solid var(--line);border-radius:7px;padding:8px;max-height:260px;overflow:auto;font:11px/1.45 var(--mono);color:#cfd5db;margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.bar{height:6px;background:#2a2f35;border-radius:4px;overflow:hidden;margin-top:6px}
+.bar>div{height:100%;background:var(--accent);width:0;transition:width .4s}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip{background:var(--panel2);border:1px solid var(--line);color:#c9ced4;border-radius:999px;padding:2px 10px;font-size:12px;cursor:pointer}
+.chip.on{background:#2b3a22;border-color:#4d6b38;color:#d6f2c2}
+table.dec{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
+table.dec td,table.dec th{border-bottom:1px solid var(--line);padding:3px 4px;text-align:right}
+table.dec td:first-child,table.dec th:first-child,table.dec td:nth-child(2){text-align:left}
+.OFFSIDE{color:var(--off);font-weight:700} .ONSIDE{color:var(--on);font-weight:600}
+.verdict{font-size:15px;font-weight:700;margin:2px 0 4px}
+.ck{font-size:12px;margin:2px 0} .ck.ok::before{content:"✓ ";color:var(--ok)} .ck.no::before{content:"✗ ";color:var(--bad)} .ck.mid::before{content:"! ";color:var(--warn)}
+.toast{position:fixed;right:14px;bottom:14px;background:#2a2f35;border:1px solid var(--line);padding:9px 13px;border-radius:8px;max-width:420px;box-shadow:0 8px 30px #0008;z-index:10;display:none;font-size:13px}
+.toast.err{border-color:#7a3530;background:#3a1f1d}
+.welcome{max-width:640px;margin:40px auto;padding:0 20px}
+.modal{position:fixed;inset:0;background:#0009;display:none;place-items:center;z-index:20}
+.modal .box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;width:min(560px,92vw);max-height:80vh;overflow:auto}
+.plist{display:flex;flex-direction:column;gap:2px;max-height:300px;overflow:auto;margin-top:6px}
+.plist .p{display:grid;grid-template-columns:44px 1fr 92px;gap:6px;align-items:center;font-size:12px;padding:2px 4px;border-radius:4px}
+.plist .p.hl{background:#2b3a22}
+.plist select{padding:1px 4px;font-size:12px}
+.sws{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;border:1px solid #0006}
+details summary{cursor:pointer;color:var(--muted);font-size:12px;margin-top:4px}
+kbd{font:11px var(--mono);background:#0e1012;border:1px solid var(--line);border-radius:3px;padding:0 4px}
+@media (max-width:1100px){.main{grid-template-columns:170px minmax(0,1fr) 300px}}
+</style>
+</head>
+<body>
+<div class="top">
+  <b>Offside</b>
+  <select id="venue" title="Venue = one camera set-up (folder offside_code/venues/<name>)"></select>
+  <button class="b sm" id="btn-new">+ New venue</button>
+  <button class="b sm" id="btn-import">Import config</button>
+  <span class="pill" id="modepill" title="Stationary: the camera never moves. Panning: the camera turns / zooms from one place (phone from a seat)."></span>
+  <span class="sp"></span>
+  <nav class="steps" id="steps">
+    <button data-s="1"><span class="n">1</span>Frames &amp; markings</button>
+    <button data-s="2"><span class="n">2</span>Calibrate</button>
+    <button data-s="3"><span class="n">3</span>Decide</button>
+  </nav>
+  <span class="sp"></span>
+  <span class="pill" id="calpill"></span>
+</div>
+
+<div class="main" id="main">
+  <aside id="frames">
+    <div class="fl"><h2>Frames <span class="note" id="nframes"></span></h2><div id="flist"></div></div>
+    <div class="drop" id="drop">Drop images here (or click)<br><span class="note">same camera, PNG/JPG — screenshots of the match video</span>
+      <input type="file" id="file" accept="image/*" multiple style="display:none">
+      <div class="row" style="justify-content:center;margin-top:6px" onclick="event.stopPropagation()">
+        <label class="chk"><input type="radio" name="role" value="calibration" checked> calibration</label>
+        <label class="chk"><input type="radio" name="role" value="play"> play to judge</label>
+      </div>
+    </div>
+    <div style="padding:0 8px 12px"><button class="b sm" style="width:100%" id="btn-browse">Add from offside_code/ folders…</button></div>
+  </aside>
+
+  <section id="stagewrap">
+    <div class="toolbar" id="tb1">
+      <button class="b sm tool" data-t="element" title="Click a pitch marking: 2 clicks for a straight line, 3+ clicks along an arc (Enter to finish), or drag a box around the centre circle">✎ Marking</button>
+      <select id="el" style="max-width:220px"></select>
+      <label title="Tolerance around your clicks, in pixels of the image: white-line pixels within ± band are used">band <input type="number" id="band" value="14" min="3" max="60" style="width:56px"></label>
+      <label title="Thin, far-away line (far touchline): no grass gating, lower contrast threshold"><input type="checkbox" id="loose"> thin/far</label>
+      <span class="sep"></span>
+      <button class="b sm tool" data-t="inside" title="Click turf INSIDE the field of play, near the bottom of the picture (tells the calibration the near touchline is not visible)">＋ Turf points</button>
+      <button class="b sm tool" data-t="ignore" title="Drag a box over score bugs, logos, stands — no lines or players are taken from it">▭ Ignore box</button>
+      <button class="b sm tool" data-t="occlude" title="Drag a box over an overlay that can hide players' feet (those players are not used as calibration rulers)">▭ Occluding box</button>
+      <button class="b sm tool" data-t="miny" title="Click just above the far touchline: people above it (stands, bench) are ignored">⤒ Far-touchline limit</button>
+      <span class="sep"></span>
+      <button class="b sm" id="btn-finish" title="Finish the arc being clicked (Enter)">Finish</button>
+      <button class="b sm" id="btn-undo" title="Remove the last clicked point (Backspace)">Undo point</button>
+    </div>
+    <div class="toolbar" id="tb2" style="display:none">
+      <label><input type="checkbox" id="ov-reproj" checked> calibrated pitch (magenta)</label>
+      <label><input type="checkbox" id="ov-marks" checked> my markings</label>
+      <label><input type="checkbox" id="ov-check"> line pixels found</label>
+      <span class="note" id="tb2note"></span>
+    </div>
+    <div class="toolbar" id="tb3" style="display:none">
+      <div class="chips" id="resviews"></div>
+      <span class="sep"></span>
+      <button class="b sm tool" data-t="ball" title="Click the ball's contact point (bottom of the ball)">● Ball</button>
+      <button class="b sm tool" data-t="sample" title="Click a shirt (or shorts) to set that team's kit colour rule">🎨 Sample kit</button>
+      <button class="b sm tool" data-t="pick" title="Click a player to change his team">⇄ Player team</button>
+      <span class="sep"></span>
+      <a id="fullres" href="#" target="_blank" class="note" style="display:none">full resolution ↗</a>
+      <span class="sep"></span><span id="verdict" style="font-size:12.5px"></span>
+    </div>
+    <div id="stage">
+      <canvas id="cv"></canvas>
+      <img id="resimg" alt="">
+      <canvas id="loupe" width="170" height="170"></canvas>
+      <div id="msg"></div>
+    </div>
+    <div class="status" id="status"><span id="st-pos"></span><span id="st-tool"></span><span id="st-save"></span><span class="note"><kbd>scroll</kbd> zoom · <kbd>right-drag</kbd> pan · <kbd>0</kbd> fit · <kbd>Enter</kbd> finish · <kbd>Esc</kbd> cancel</span></div>
+  </section>
+
+  <aside class="panel" id="panel"></aside>
+</div>
+
+<div class="modal" id="modal"><div class="box" id="mbox"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = '__BASE__';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+let prefs = {}; try { prefs = JSON.parse(localStorage.getItem('offside_studio') || '{}'); } catch (e) {}
+const savePrefs = () => { try { localStorage.setItem('offside_studio', JSON.stringify(prefs)); } catch (e) {} };
+function toast(m, err) { const t = $('toast'); t.textContent = m; t.className = 'toast' + (err ? ' err' : ''); t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', err ? 8000 : 3200); }
+async function api(path, body, raw) {
+  const opt = body === undefined ? {} : raw ? {method: 'POST', body} : {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)};
+  const r = await fetch(BASE + path, opt);
+  const j = await r.json().catch(() => ({error: r.statusText}));
+  if (!r.ok || j.error) throw new Error(j.error || r.statusText);
+  return j;
+}
+const enc = encodeURIComponent;
+const imgURL = (p, w, v) => `${BASE}/img?p=${enc(p)}&w=${w}${v ? '&v=' + v : ''}`;
+
+// ------------------------------------------------------------------ state
+let S = null, V = null, cur = null, step = prefs.step || 1, tool = 'element', pending = [], H = null;
+let IMG = null, imgW = 0, imgH = 0, view = {k: 1, ox: 0, oy: 0}, mouse = null, drag = null;
+let OV = {check: null, reproj: null}, R = null, resView = 'frame', ball = {mode: 'auto', xy: null}, pickId = null, lastSample = null;
+let job = null, jobNext = 0, jobTimer = null;
+const FIXED_LABEL = {fixed: 'Stationary camera', panning: 'Panning camera'};
+const PAL = ['#ff5a5a','#5fb3f0','#ffd23f','#ff7ae6','#7dff8c','#ffa94d','#b18cff','#3ff0e0','#ff9fb0','#c3f05a'];
+const elColor = name => { let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0; return PAL[h % PAL.length]; };
+const kindOf = n => S.elements.lines.includes(n) ? 'line' : S.elements.circles.includes(n) ? 'circle' : 'point';
+const teamNames = () => [...new Set((V.teams || []).map(t => t.team))];
+const playTeams = () => teamNames().filter(t => t !== 'REF');
+const TEAMCOL = ['#4a90e2', '#ef8a3c', '#9b6bff', '#ff5fa2', '#3fd0c0', '#e0e050'];
+const teamColor = t => t === 'REF' ? '#222' : t === 'UNKNOWN' ? '#bbb' : TEAMCOL[Math.max(0, playTeams().indexOf(t)) % TEAMCOL.length];
+
+// ------------------------------------------------------------------ boot
+async function boot() {
+  try { S = await api('/api/state'); } catch (e) { $('panel').innerHTML = `<div class="card">Offside studio not reachable: ${esc(e.message)}</div>`; return; }
+  const sel = S.elements;
+  $('el').innerHTML = `<optgroup label="Straight lines (2 clicks)">${sel.lines.map(n => `<option>${n}</option>`).join('')}</optgroup>
+    <optgroup label="Circles / arcs (3+ clicks or a box)">${sel.circles.map(n => `<option>${n}</option>`).join('')}</optgroup>
+    <optgroup label="Points (1 click)">${sel.points.map(n => `<option>${n}</option>`).join('')}</optgroup>`;
+  $('el').value = prefs.el || 'halfway_line';
+  fillVenueSelect();
+  const want = prefs.venue && S.venues.find(v => v.name === prefs.venue) ? prefs.venue : (S.venues[0] || {}).name;
+  if (want) await loadVenue(want); else welcome();
+}
+function fillVenueSelect() {
+  $('venue').innerHTML = S.venues.length ? S.venues.map(v => `<option value="${esc(v.name)}">${esc(v.title)} ${v.calibrated ? '✓' : ''}</option>`).join('') : '<option value="">(no venue yet)</option>';
+  if (V) $('venue').value = V.name;
+}
+$('venue').onchange = () => $('venue').value && loadVenue($('venue').value);
+
+function welcome() {
+  V = null; cur = null; renderFrames(); drawEmpty('');
+  $('modepill').textContent = ''; $('calpill').textContent = '';
+  $('panel').innerHTML = `<div class="card"><h3>Start</h3><p class="note">A <b>venue</b> is one camera set-up. Create one and add frames of the match,
+    or import one of the existing configs of <code>offside_code/configs</code>.</p>
+    <div class="row"><button class="b primary" onclick="newVenue()">+ New venue</button></div>
+    ${S.configs.map(c => `<div class="row"><button class="b blue" onclick="importCfg('${esc(c)}')">Import ${esc(c)}</button></div>`).join('')}</div>`;
+}
+
+async function loadVenue(name, keepFrame) {
+  try { V = await api('/api/venue/' + enc(name)); } catch (e) { toast(e.message, true); return; }
+  prefs.venue = name; savePrefs(); fillVenueSelect();
+  $('modepill').textContent = FIXED_LABEL[V.mode]; $('modepill').className = 'pill';
+  updateCalPill();
+  renderFrames();
+  const f = keepFrame && V.frames.find(x => x.image === keepFrame) ? keepFrame
+          : (prefs['frame_' + name] && V.frames.find(x => x.image === prefs['frame_' + name]) ? prefs['frame_' + name] : V.reference);
+  if (f) await selectFrame(f); else { cur = null; drawEmpty('Add frames of the match on the left (drop images, or pick them from the offside_code folders).'); renderPanel(); }
+  if (V.job && V.job.status === 'running') watchJob(V.job.id);
+}
+function updateCalPill() {
+  const m = V && V.model;
+  $('calpill').textContent = !m ? 'not calibrated' : m.error ? 'camera model unreadable' : m.stale ? 'calibrated — markings changed since' : 'calibrated ' + (m.created || '');
+  $('calpill').className = 'pill ' + (!m ? 'warn' : m.error ? 'bad' : m.stale ? 'warn' : 'ok');
+  document.querySelectorAll('#steps button').forEach(b => {
+    const s = +b.dataset.s;
+    b.classList.toggle('done', s === 1 ? !!(V && V.reference && (V.hints[V.reference] || {}).features?.length >= 2) : s === 2 ? !!(m && !m.error) : false);
+  });
+}
+
+// ------------------------------------------------------------------ frames list
+function renderFrames() {
+  if (!V) { $('flist').innerHTML = ''; $('nframes').textContent = ''; return; }
+  $('nframes').textContent = `(${V.frames.length})`;
+  $('flist').innerHTML = V.frames.map(f => {
+    const tags = [];
+    if (f.reference) tags.push('<span class="tag ref" title="Reference frame (decision frame of the config)">★ ref</span>');
+    if (!f.exists) tags.push('<span class="tag warn">missing</span>');
+    if (V.mode === 'fixed' && !f.reference) tags.push(f.use ? (f.same_size ? '<span class="tag ok" title="pooled into the calibration">calib</span>' : '<span class="tag warn" title="different size: cannot be pooled">size ≠</span>') : '<span class="tag off">play</span>');
+    if (V.mode === 'panning' && f.n_features) tags.push(`<span class="tag ${f.use ? 'ok' : 'off'}">${f.n_features} marks</span>`);
+    if (V.mode === 'fixed' && f.reference) tags.push(`<span class="tag">${f.n_features} marks</span>`);
+    if (f.judgeable) tags.push('<span class="tag ok" title="can be judged in step 3">✓ judge</span>');
+    if (f.result) tags.push('<span class="tag" title="a decision was saved">result</span>');
+    return `<button class="fr ${f.image === cur ? 'sel' : ''}" onclick="selectFrame('${esc(f.image)}')" title="${esc(f.image)}">
+      <img loading="lazy" src="${imgURL(f.image, 240, Math.round(f.mtime))}" alt="">
+      <div class="nm">${esc(f.name)}${f.size ? ` <span class="note">${f.size[0]}×${f.size[1]}</span>` : ''}</div><div class="tg">${tags.join('')}</div></button>`;
+  }).join('');
+}
+async function selectFrame(img) {
+  if (pending.length) pending = [];
+  cur = img; prefs['frame_' + V.name] = img; savePrefs();
+  H = clone(V.hints[img] || {features: [], inside_pitch: [], ignore_regions: [], occluding_regions: [], player_min_y: 0});
+  OV = {check: null, reproj: null}; R = null; resView = 'frame'; pickId = null; ball = {mode: ball.mode === 'click' ? 'auto' : ball.mode, xy: null};
+  renderFrames();
+  const f = V.frames.find(x => x.image === img);
+  drawEmpty('Loading…');
+  IMG = new Image();
+  IMG.onload = () => { const s = f && f.size ? f.size : [IMG.naturalWidth, IMG.naturalHeight]; imgW = s[0]; imgH = s[1]; fit(); draw(); $('msg').textContent = ''; };
+  IMG.onerror = () => drawEmpty('Cannot load this image.');
+  IMG.src = imgURL(img, 2600, f ? Math.round(f.mtime) : 0);
+  if (step >= 2 && V.model && !V.model.error) loadReproj();
+  renderPanel(); renderStepUI();
+  if (step === 3) loadSavedResult();
+}
+function drawEmpty(m) { IMG = null; const c = $('cv'); c.getContext('2d').clearRect(0, 0, c.width, c.height); $('msg').textContent = m; $('resimg').style.display = 'none'; $('cv').style.display = 'block'; }
+
+// uploads
+const drop = $('drop');
+drop.onclick = () => V ? $('file').click() : toast('Create or choose a venue first', true);
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); upload([...e.dataTransfer.files]); };
+$('file').onchange = () => { upload([...$('file').files]); $('file').value = ''; };
+async function upload(files) {
+  if (!V) return toast('Create or choose a venue first', true);
+  const role = document.querySelector('input[name=role]:checked').value;
+  let last = null;
+  for (const f of files) {
+    toast(`Adding ${f.name}…`);
+    try { const r = await api(`/api/venue/${enc(V.name)}/upload?name=${enc(f.name)}&role=${role}`, f, true); last = r.image; }
+    catch (e) { toast(f.name + ': ' + e.message, true); }
+  }
+  await loadVenue(V.name, last || cur);
+  if (last) toast(`${files.length} frame(s) added`);
+}
+$('btn-browse').onclick = async () => {
+  if (!V) return toast('Create or choose a venue first', true);
+  const r = await api('/api/browse');
+  const have = new Set(V.frames.map(f => f.image));
+  modal(`<h3 style="margin:0 0 6px">Add images already in offside_code/</h3><p class="note">They are referenced, not copied.</p>
+    <div class="plist" id="blist">${r.images.filter(p => !have.has(p)).map(p => `<label class="chk"><input type="checkbox" value="${esc(p)}"> ${esc(p)}</label>`).join('') || '<span class="note">nothing new</span>'}</div>
+    <div class="row" style="margin-top:10px"><label class="chk"><input type="radio" name="brole" value="calibration" checked> calibration</label><label class="chk"><input type="radio" name="brole" value="play"> play to judge</label>
+    <span style="flex:1"></span><button class="b" onclick="closeModal()">Cancel</button><button class="b primary" id="badd">Add</button></div>`);
+  $('badd').onclick = async () => {
+    const paths = [...document.querySelectorAll('#blist input:checked')].map(i => i.value);
+    const role = document.querySelector('input[name=brole]:checked').value;
+    closeModal();
+    if (!paths.length) return;
+    try { await api(`/api/venue/${enc(V.name)}/add`, {paths, role}); await loadVenue(V.name, paths[0]); } catch (e) { toast(e.message, true); }
+  };
+};
+function modal(html) { $('mbox').innerHTML = html; $('modal').style.display = 'grid'; }
+function closeModal() { $('modal').style.display = 'none'; }
+$('modal').onclick = e => { if (e.target === $('modal')) closeModal(); };
+
+$('btn-new').onclick = () => newVenue();
+function newVenue() {
+  modal(`<h3 style="margin:0 0 8px">New venue</h3>
+    <div class="row"><div class="g"><input type="text" id="nv-name" placeholder="e.g. Mansores_main_camera" style="width:100%"></div></div>
+    <label class="chk"><input type="radio" name="nvm" value="fixed" checked> <b>Stationary camera</b> — never moves (club camera on a pole, broadcast wide shot)</label>
+    <label class="chk"><input type="radio" name="nvm" value="panning"> <b>Panning camera</b> — turns / zooms from one place (phone from a seat, PTZ)</label>
+    <div class="row" style="margin-top:10px"><span style="flex:1"></span><button class="b" onclick="closeModal()">Cancel</button><button class="b primary" id="nv-ok">Create</button></div>`);
+  $('nv-name').focus();
+  $('nv-ok').onclick = async () => {
+    const name = $('nv-name').value.trim(); if (!name) return;
+    try { const v = await api('/api/venues', {name, mode: document.querySelector('input[name=nvm]:checked').value}); closeModal(); S = await api('/api/state'); await loadVenue(v.name); setStep(1); toast('Venue created — now add frames on the left'); }
+    catch (e) { toast(e.message, true); }
+  };
+}
+$('btn-import').onclick = () => {
+  modal(`<h3 style="margin:0 0 8px">Import a config</h3><p class="note">Copies a config of <code>offside_code/configs</code> into a new venue (its images stay where they are; an existing stationary-camera model is copied, so you can decide at once).</p>
+    ${S.configs.map(c => `<div class="row"><button class="b blue" onclick="importCfg('${esc(c)}')">${esc(c)}</button></div>`).join('')}
+    <div class="row"><span style="flex:1"></span><button class="b" onclick="closeModal()">Close</button></div>`);
+};
+async function importCfg(c) {
+  const name = prompt('Name of the new venue', c.split('/').pop().replace(/\.json$/, ''));
+  if (!name) return;
+  try { const v = await api('/api/venues', {action: 'import', config: c, name}); closeModal(); S = await api('/api/state'); await loadVenue(v.name); toast('Imported'); }
+  catch (e) { toast(e.message, true); }
+}
+
+// ------------------------------------------------------------------ steps
+document.querySelectorAll('#steps button').forEach(b => b.onclick = () => setStep(+b.dataset.s));
+function setStep(s) {
+  step = s; prefs.step = s; savePrefs();
+  if (s === 1) setTool(['element','inside','ignore','occlude','miny'].includes(tool) ? tool : 'element');
+  else if (s === 3) setTool(['ball','sample','pick'].includes(tool) ? tool : 'pick');
+  else setTool('none');
+  if (s >= 2 && V && V.model && !V.model.error && cur && !OV.reproj) loadReproj();
+  if (s === 3 && cur && !R) loadSavedResult();
+  if (s !== 3) { resView = 'frame'; }
+  renderStepUI(); renderPanel(); draw();
+}
+function renderStepUI() {
+  document.querySelectorAll('#steps button').forEach(b => b.classList.toggle('on', +b.dataset.s === step));
+  $('tb1').style.display = step === 1 ? 'flex' : 'none';
+  $('tb2').style.display = step === 2 ? 'flex' : 'none';
+  $('tb3').style.display = step === 3 ? 'flex' : 'none';
+  const canEdit = editable();
+  document.querySelectorAll('#tb1 .tool, #tb1 select, #tb1 input, #tb1 #btn-finish, #tb1 #btn-undo').forEach(x => x.disabled = !canEdit);
+  renderResViews();
+}
+function editable() { return step === 1 && V && cur && (V.mode === 'panning' || cur === V.reference); }
+document.querySelectorAll('.tool').forEach(b => b.onclick = () => setTool(b.dataset.t));
+function setTool(t) {
+  tool = t; pending = [];
+  document.querySelectorAll('.tool').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  const label = {element: 'marking: ' + $('el').value, inside: 'turf points', ignore: 'ignore box (drag)', occlude: 'occluding box (drag)', miny: 'far-touchline limit', ball: 'ball (click its contact point)', sample: 'sample kit colour (click a shirt)', pick: 'click a player'}[t] || '';
+  $('st-tool').innerHTML = label ? 'Tool: <b>' + esc(label) + '</b>' : '';
+  draw();
+}
+$('el').onchange = () => { prefs.el = $('el').value; savePrefs(); const k = kindOf($('el').value); $('loose').checked = $('el').value === 'touchline_far'; $('band').value = $('el').value === 'touchline_far' ? 12 : k === 'circle' ? 14 : 14; setTool('element'); };
+
+// ------------------------------------------------------------------ canvas: view
+const cv = $('cv'), ctx = cv.getContext('2d');
+function resize() { const r = $('stage').getBoundingClientRect(), d = window.devicePixelRatio || 1; cv.width = Math.max(10, r.width * d); cv.height = Math.max(10, r.height * d); }
+function fit() { resize(); if (!imgW) return; const k = Math.min(cv.width / imgW, cv.height / imgH); view = {k, ox: (cv.width - imgW * k) / 2, oy: (cv.height - imgH * k) / 2}; }
+window.addEventListener('resize', () => { const k0 = view.k; fit(); draw(); });
+const toImg = e => { const r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1; const x = (e.clientX - r.left) * d, y = (e.clientY - r.top) * d; return [(x - view.ox) / view.k, (y - view.oy) / view.k, x, y]; };
+const toScr = (x, y) => [x * view.k + view.ox, y * view.k + view.oy];
+cv.addEventListener('wheel', e => {
+  e.preventDefault(); if (!IMG) return;
+  const [ix, iy, sx, sy] = toImg(e); const f = Math.exp(-e.deltaY * 0.0015);
+  const k = Math.max(0.05, Math.min(20, view.k * f)); view.ox = sx - ix * k; view.oy = sy - iy * k; view.k = k; draw();
+}, {passive: false});
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('mousedown', e => {
+  if (!IMG) return;
+  const [ix, iy, sx, sy] = toImg(e);
+  if (e.button === 2 || e.button === 1 || e.altKey) { drag = {kind: 'pan', sx, sy, ox: view.ox, oy: view.oy}; return; }
+  if (editable()) { const h = hitVertex(sx, sy); if (h) { drag = {kind: 'vertex', h}; return; } }
+  drag = {kind: 'click', ix, iy, sx, sy, shift: e.shiftKey};
+});
+window.addEventListener('mousemove', e => {
+  if (!IMG) return;
+  const [ix, iy, sx, sy] = toImg(e);
+  const inside = e.target === cv;
+  mouse = inside ? [ix, iy] : null;
+  $('st-pos').innerHTML = inside ? `x <b>${Math.round(ix)}</b> y <b>${Math.round(iy)}</b>` : '';
+  if (drag && drag.kind === 'pan') { view.ox = drag.ox + sx - drag.sx; view.oy = drag.oy + sy - drag.sy; }
+  if (drag && drag.kind === 'vertex') { setVertex(drag.h, [Math.round(ix), Math.round(iy)]); drag.moved = true; }
+  if (drag && drag.kind === 'click' && Math.hypot(sx - drag.sx, sy - drag.sy) > 6) drag.kind = 'rect';
+  if (drag && drag.kind === 'rect') { drag.ex = ix; drag.ey = iy; }
+  draw(); loupe(inside ? [ix, iy] : null);
+});
+window.addEventListener('mouseup', e => {
+  if (!drag) return;
+  const d = drag; drag = null;
+  if (d.kind === 'vertex') { if (d.moved) changed(); return; }
+  if (d.kind === 'rect') { rectDone([Math.min(d.ix, d.ex), Math.min(d.iy, d.ey), Math.max(d.ix, d.ex), Math.max(d.iy, d.ey)].map(Math.round)); return; }
+  if (d.kind === 'click') clickAt(Math.round(d.ix), Math.round(d.iy), d.shift);
+});
+cv.addEventListener('dblclick', () => { if (pending.length >= 3) finishPending(); });
+window.addEventListener('keydown', e => {
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'Enter') finishPending();
+  else if (e.key === 'Escape') { pending = []; draw(); }
+  else if (e.key === 'Backspace') { if (pending.length) { pending.pop(); draw(); e.preventDefault(); } }
+  else if (e.key === '0') { fit(); draw(); }
+  else if (e.key === '+' || e.key === '=') { zoomBy(1.25); } else if (e.key === '-') { zoomBy(0.8); }
+});
+function zoomBy(f) { const cx = cv.width / 2, cy = cv.height / 2, ix = (cx - view.ox) / view.k, iy = (cy - view.oy) / view.k; view.k *= f; view.ox = cx - ix * view.k; view.oy = cy - iy * view.k; draw(); }
+$('btn-finish').onclick = () => finishPending();
+$('btn-undo').onclick = () => { pending.pop(); draw(); };
+
+function loupe(p) {
+  const L = $('loupe'), c = L.getContext('2d');
+  if (!p || !IMG || !(step === 1 || (step === 3 && tool !== 'pick'))) { L.style.display = 'none'; return; }
+  L.style.display = 'block';
+  const z = 4, s = IMG.naturalWidth / imgW, half = 170 / 2 / z;
+  c.imageSmoothingEnabled = false; c.fillStyle = '#000'; c.fillRect(0, 0, 170, 170);
+  c.drawImage(IMG, (p[0] - half) * s, (p[1] - half) * s, 2 * half * s, 2 * half * s, 0, 0, 170, 170);
+  c.save(); c.translate(85 - p[0] * z, 85 - p[1] * z); c.scale(z, z); drawHints(c, 1 / z, true); c.restore();
+  c.strokeStyle = '#fff'; c.lineWidth = 1; c.beginPath(); c.moveTo(85, 70); c.lineTo(85, 100); c.moveTo(70, 85); c.lineTo(100, 85); c.stroke();
+}
+
+// ------------------------------------------------------------------ editing
+function frameHints() { return V.mode === 'fixed' && cur !== V.reference ? (V.hints[V.reference] || null) : H; }
+function vertices() {
+  const out = [];
+  (H.features || []).forEach((f, i) => { (f.polyline || []).forEach((p, j) => out.push({t: 'f', i, j, p})); if (f.pixel) out.push({t: 'px', i, p: f.pixel});
+    if (f.bbox) { const b = f.bbox; [[b[0], b[1]], [b[2], b[3]]].forEach((p, j) => out.push({t: 'bb', i, j, p})); } });
+  (H.inside_pitch || []).forEach((p, i) => out.push({t: 'in', i, p}));
+  ['ignore_regions', 'occluding_regions'].forEach(k => (H[k] || []).forEach((b, i) => [[b[0], b[1]], [b[2], b[3]]].forEach((p, j) => out.push({t: k, i, j, p}))));
+  return out;
+}
+function hitVertex(sx, sy) {
+  let best = null, bd = 9 * (window.devicePixelRatio || 1);
+  for (const v of vertices()) { const [x, y] = toScr(v.p[0], v.p[1]); const d = Math.hypot(x - sx, y - sy); if (d < bd) { bd = d; best = v; } }
+  return best;
+}
+function setVertex(v, p) {
+  if (v.t === 'f') H.features[v.i].polyline[v.j] = p;
+  else if (v.t === 'px') H.features[v.i].pixel = p;
+  else if (v.t === 'bb') { const b = H.features[v.i].bbox; if (v.j === 0) { b[0] = p[0]; b[1] = p[1]; } else { b[2] = p[0]; b[3] = p[1]; } }
+  else if (v.t === 'in') H.inside_pitch[v.i] = p;
+  else { const b = H[v.t][v.i]; if (v.j === 0) { b[0] = p[0]; b[1] = p[1]; } else { b[2] = p[0]; b[3] = p[1]; } }
+}
+function clickAt(x, y, shift) {
+  if (step === 3) return click3(x, y);
+  if (!editable()) { if (step === 1 && V && cur !== V.reference) toast('Stationary camera: markings are clicked on the ★ reference frame (they hold for every frame).'); return; }
+  if (tool === 'element') {
+    const el = $('el').value, k = kindOf(el);
+    if (k === 'point') { upsertFeature({element: el, pixel: [x, y]}); return; }
+    pending.push([x, y]);
+    if (k === 'line' && pending.length >= 2 && !shift) finishPending();
+    draw(); return;
+  }
+  if (tool === 'inside') { H.inside_pitch = (H.inside_pitch || []).concat([[x, y]]); changed(); }
+  if (tool === 'miny') { H.player_min_y = y; changed(); }
+}
+function rectDone(b) {
+  if (step !== 1 || !editable()) return;
+  if (b[2] - b[0] < 4 || b[3] - b[1] < 4) return;
+  if (tool === 'ignore') { H.ignore_regions = (H.ignore_regions || []).concat([b]); changed(); }
+  else if (tool === 'occlude') { H.occluding_regions = (H.occluding_regions || []).concat([b]); changed(); }
+  else if (tool === 'element' && kindOf($('el').value) === 'circle') upsertFeature({element: $('el').value, bbox: b});
+}
+function finishPending() {
+  if (!pending.length || tool !== 'element') return;
+  const el = $('el').value, k = kindOf(el);
+  if (pending.length < (k === 'line' ? 2 : 3)) { toast(k === 'line' ? 'A line needs 2 clicks' : 'An arc needs at least 3 clicks along it (or drag a box around a full circle)', true); return; }
+  const f = {element: el, polyline: pending.slice(), band: +$('band').value || 14};
+  if ($('loose').checked) f.loose = true;
+  pending = []; upsertFeature(f);
+}
+function upsertFeature(f) { H.features = (H.features || []).filter(x => x.element !== f.element).concat([f]); changed(); }
+function removeItem(kind, i) { if (kind === 'features') H.features.splice(i, 1); else if (kind === 'miny') H.player_min_y = 0; else H[kind].splice(i, 1); changed(); }
+let saveTimer = null;
+function changed() {
+  OV.check = null; V.hints[cur] = H; draw(); renderPanel();
+  $('st-save').textContent = 'saving…'; clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try { const v = await api(`/api/venue/${enc(V.name)}/save`, {hints: {[cur]: H}}); v.hints[cur] = H; V = v; renderFrames(); updateCalPill(); $('st-save').textContent = 'saved ✓'; }
+    catch (e) { $('st-save').textContent = 'not saved'; toast(e.message, true); }
+  }, 500);
+}
+async function saveVenue(patch, reload) {
+  try { const v = await api(`/api/venue/${enc(V.name)}/save`, patch); if (cur && H && !patch.hints) v.hints[cur] = v.hints[cur] || H; V = v; if (cur) H = clone(V.hints[cur] || H); renderFrames(); updateCalPill(); if (reload) renderPanel(); return true; }
+  catch (e) { toast(e.message, true); return false; }
+}
+
+// ------------------------------------------------------------------ drawing
+function draw() {
+  resize(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#0b0c0e'; ctx.fillRect(0, 0, cv.width, cv.height);
+  if (!IMG) return;
+  ctx.setTransform(view.k, 0, 0, view.k, view.ox, view.oy);
+  ctx.imageSmoothingEnabled = view.k < 1.5;
+  ctx.drawImage(IMG, 0, 0, imgW, imgH);
+  const px = 1 / view.k * (window.devicePixelRatio || 1);
+  if (step === 3) { draw3(px); return; }
+  if (step === 2 && $('ov-check').checked && OV.check) drawCheck(ctx, px);
+  if (step === 1 && OV.check) drawCheck(ctx, px);
+  if (step === 1 || $('ov-marks').checked) drawHints(ctx, px, false);
+  if (step === 2 && $('ov-reproj').checked && OV.reproj) drawReproj(ctx, px);
+}
+function drawHints(c, px, small) {
+  const h = frameHints(); if (!h) return;
+  const ro = h !== H;
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  (h.ignore_regions || []).forEach(b => { c.fillStyle = 'rgba(120,120,120,.35)'; c.fillRect(b[0], b[1], b[2] - b[0], b[3] - b[1]); c.strokeStyle = '#aaa'; c.lineWidth = 1.5 * px; c.strokeRect(b[0], b[1], b[2] - b[0], b[3] - b[1]); });
+  (h.occluding_regions || []).forEach(b => { c.fillStyle = 'rgba(255,150,40,.22)'; c.fillRect(b[0], b[1], b[2] - b[0], b[3] - b[1]); c.strokeStyle = '#ffa94d'; c.lineWidth = 1.5 * px; c.strokeRect(b[0], b[1], b[2] - b[0], b[3] - b[1]); });
+  if (h.player_min_y) { c.setLineDash([10 * px, 6 * px]); c.strokeStyle = '#3ff0e0'; c.lineWidth = 1.5 * px; c.beginPath(); c.moveTo(0, h.player_min_y); c.lineTo(imgW, h.player_min_y); c.stroke(); c.setLineDash([]);
+    if (!small) label(c, 'people above are ignored', 8 * px, h.player_min_y - 6 * px, '#3ff0e0', px); }
+  (h.features || []).forEach(f => {
+    const col = elColor(f.element);
+    if (f.polyline) {
+      c.strokeStyle = col + (ro ? '33' : '40'); c.lineWidth = 2 * (f.band || 15); c.beginPath(); f.polyline.forEach((p, j) => j ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.stroke();
+      c.strokeStyle = col; c.lineWidth = 2 * px; c.beginPath(); f.polyline.forEach((p, j) => j ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.stroke();
+      if (!ro) f.polyline.forEach(p => dot(c, p, 4.5 * px, col));
+      if (!small) label(c, f.element + (f.loose ? ' (thin)' : ''), f.polyline[0][0] + 8 * px, f.polyline[0][1] - 8 * px, col, px);
+    } else if (f.bbox) {
+      const b = f.bbox; c.setLineDash([8 * px, 5 * px]); c.strokeStyle = col; c.lineWidth = 2 * px; c.strokeRect(b[0], b[1], b[2] - b[0], b[3] - b[1]); c.setLineDash([]);
+      c.beginPath(); c.ellipse((b[0] + b[2]) / 2, (b[1] + b[3]) / 2, (b[2] - b[0]) / 2, (b[3] - b[1]) / 2, 0, 0, 2 * Math.PI); c.strokeStyle = col + '88'; c.stroke();
+      if (!ro) [[b[0], b[1]], [b[2], b[3]]].forEach(p => dot(c, p, 4.5 * px, col));
+      if (!small) label(c, f.element + ' (box)', b[0] + 6 * px, b[1] - 8 * px, col, px);
+    } else if (f.pixel) { dot(c, f.pixel, 7 * px, col); if (!small) label(c, f.element, f.pixel[0] + 10 * px, f.pixel[1] - 8 * px, col, px); }
+  });
+  (h.inside_pitch || []).forEach(p => { c.strokeStyle = '#7dff8c'; c.lineWidth = 2.5 * px; c.beginPath(); c.moveTo(p[0] - 9 * px, p[1]); c.lineTo(p[0] + 9 * px, p[1]); c.moveTo(p[0], p[1] - 9 * px); c.lineTo(p[0], p[1] + 9 * px); c.stroke(); });
+  if (!ro && pending.length) {
+    const col = elColor($('el').value);
+    c.strokeStyle = col; c.lineWidth = 2 * px; c.setLineDash([6 * px, 4 * px]); c.beginPath(); pending.forEach((p, j) => j ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); if (mouse) c.lineTo(mouse[0], mouse[1]); c.stroke(); c.setLineDash([]);
+    pending.forEach(p => dot(c, p, 5 * px, col));
+  }
+  if (drag && drag.kind === 'rect' && !small) { c.setLineDash([6 * px, 4 * px]); c.strokeStyle = tool === 'occlude' ? '#ffa94d' : tool === 'ignore' ? '#ddd' : elColor($('el').value); c.lineWidth = 2 * px; c.strokeRect(drag.ix, drag.iy, drag.ex - drag.ix, drag.ey - drag.iy); c.setLineDash([]); }
+}
+function drawCheck(c, px) {
+  for (const [el, P] of Object.entries(OV.check.features || {})) { c.fillStyle = elColor(el); for (const p of P) c.fillRect(p[0] - 1.2 * px, p[1] - 1.2 * px, 2.4 * px, 2.4 * px); }
+}
+function drawReproj(c, px) {
+  c.strokeStyle = '#ff3df2'; c.lineWidth = 2 * px;
+  for (const segs of Object.values(OV.reproj.elements)) for (const s of segs) { c.beginPath(); s.forEach((p, j) => j ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.stroke(); }
+  for (const p of Object.values(OV.reproj.points || {})) dot(c, p, 4 * px, '#ff3df2');
+}
+function dot(c, p, r, col) { c.beginPath(); c.arc(p[0], p[1], r, 0, 2 * Math.PI); c.fillStyle = col; c.fill(); c.lineWidth = r / 3; c.strokeStyle = '#000'; c.stroke(); }
+function label(c, t, x, y, col, px) {
+  c.font = `${12 * px}px -apple-system,Segoe UI,sans-serif`; const w = c.measureText(t).width;
+  c.fillStyle = 'rgba(15,15,15,.78)'; c.fillRect(x - 3 * px, y - 12 * px, w + 6 * px, 16 * px); c.fillStyle = col; c.fillText(t, x, y);
+}
+
+// ------------------------------------------------------------------ panel per step
+function renderPanel() {
+  if (!V) return;
+  if (!cur) { $('panel').innerHTML = `<div class="card"><h3>${esc(V.title)}</h3><p class="note">${FIXED_LABEL[V.mode]}. Add frames on the left to begin.</p>${modeCard()}</div>`; return; }
+  $('panel').innerHTML = step === 1 ? panel1() : step === 2 ? panel2() : panel3();
+  if (step === 3) wire3();
+  if (step === 2 && job) renderJob();
+}
+function modeCard() {
+  return `<div class="row"><span class="note">Camera:</span>
+    <select onchange="saveVenue({mode:this.value}, true).then(() => loadVenue(V.name, cur))">
+      <option value="fixed" ${V.mode === 'fixed' ? 'selected' : ''}>Stationary (never moves)</option>
+      <option value="panning" ${V.mode === 'panning' ? 'selected' : ''}>Panning (turns / zooms from one place)</option></select></div>`;
+}
+function panel1() {
+  const f = V.frames.find(x => x.image === cur) || {};
+  const ro = !editable();
+  const h = frameHints() || {features: []};
+  const items = [];
+  (h.features || []).forEach((x, i) => items.push(`<div class="it"><span class="sw" style="background:${elColor(x.element)}"></span><span class="t">${esc(x.element)} <span class="note">${x.bbox ? 'box' : x.pixel ? 'point' : x.polyline.length + ' clicks, ±' + (x.band || 15) + ' px'}${x.loose ? ', thin' : ''}</span>
+    ${OV.check && OV.check.counts[x.element] !== undefined ? `<span class="tag ${OV.check.counts[x.element] < 40 ? 'warn' : 'ok'}">${OV.check.counts[x.element]} px</span>` : ''}</span>${ro ? '' : `<span class="x" onclick="removeItem('features',${i})">✕</span>`}</div>`));
+  const regs = [];
+  (h.ignore_regions || []).forEach((b, i) => regs.push(`<div class="it"><span class="sw" style="background:#888"></span><span class="t">ignore [${b.join(', ')}]</span>${ro ? '' : `<span class="x" onclick="removeItem('ignore_regions',${i})">✕</span>`}</div>`));
+  (h.occluding_regions || []).forEach((b, i) => regs.push(`<div class="it"><span class="sw" style="background:#ffa94d"></span><span class="t">occluding [${b.join(', ')}]</span>${ro ? '' : `<span class="x" onclick="removeItem('occluding_regions',${i})">✕</span>`}</div>`));
+  if (h.player_min_y) regs.push(`<div class="it"><span class="sw" style="background:#3ff0e0"></span><span class="t">far-touchline limit y = ${h.player_min_y}</span>${ro ? '' : `<span class="x" onclick="removeItem('miny',0)">✕</span>`}</div>`);
+  const nIn = (h.inside_pitch || []).length;
+  return `<div class="card"><h3 style="overflow-wrap:anywhere">${esc(f.name || cur)}</h3>
+    <div class="note">${f.size ? f.size[0] + '×' + f.size[1] + ' px' : ''} · ${esc(cur)}</div>
+    <div class="row">${f.reference ? '<span class="tag ref">★ reference frame</span>' : `<button class="b sm" onclick="saveVenue({reference:cur}, true).then(() => loadVenue(V.name, cur))" title="The reference is the decision frame of the config; with a stationary camera its markings hold for every frame">★ Make reference</button>`}
+    ${f.reference ? '' : `<label class="chk"><input type="checkbox" ${f.use ? 'checked' : ''} onchange="saveVenue({use:{[cur]:this.checked}}, true)"> use for calibration</label>`}
+    <span style="flex:1"></span><button class="b sm danger" onclick="removeFrame()" title="Remove from this venue (the file stays on disk)">Remove</button></div>
+    ${modeCard()}</div>
+    ${ro ? `<div class="card"><p class="note" style="margin:0">Stationary camera: the markings below are those of the <b>★ reference frame</b> — the view never changes, so they hold here too. This frame adds the players it shows (rulers at many depths) to the calibration. Edit markings on the reference frame.</p></div>` : ''}
+    <div class="card"><h3>Pitch markings <span class="note">${(h.features || []).length}</span></h3>
+      ${ro ? '' : `<p class="note" style="margin:0 0 4px">Pick a marking in the toolbar, then click <b>on</b> the painted line: 2 clicks for a straight line (Shift = more), 3+ clicks along an arc (<kbd>Enter</kbd>), or drag a box around the whole centre circle. Drag a dot to move it. At least 2 markings, ideally lines in both directions (e.g. halfway line + far touchline) and a circle.</p>`}
+      <div class="items">${items.join('') || '<span class="note">none yet</span>'}</div>
+      <div class="row"><button class="b sm blue" onclick="checkMarks()" ${(h.features || []).length ? '' : 'disabled'}>Check markings</button><span class="note" id="chknote">${OV.check ? (OV.check.weak.length ? '⚠ few pixels: ' + esc(OV.check.weak.join(', ')) + ' — click closer to the line or widen the band' : 'all markings found ✓') : 'shows the white-line pixels picked up'}</span></div></div>
+    <div class="card"><h3>Turf &amp; regions</h3>
+      <div class="ck ${nIn >= 3 ? 'ok' : 'mid'}">${nIn} turf point${nIn === 1 ? '' : 's'} inside the field <span class="note">(3–5 along the bottom of the picture)</span></div>
+      <div class="items">${regs.join('') || '<span class="note">no ignore / occluding boxes, no far-touchline limit</span>'}</div>
+      ${ro ? '' : `<p class="note">Ignore boxes: score bug, logos, crowd. Far-touchline limit: click just above the far touchline so the bench and fans are not taken for players.</p>`}</div>
+    ${V.mode === 'fixed' ? `<div class="card"><p class="note" style="margin:0"><b>Stationary camera.</b> Click the markings once on the ★ reference. Add <b>many frames of other plays</b> (same camera, same size): they are pooled — the median background makes the lines complete and every player becomes a ruler. 40+ frames, including stoppages with players standing, give a far better perspective than one frame.</p></div>`
+      : `<div class="card"><p class="note" style="margin:0"><b>Panning camera.</b> Every frame used for the calibration needs its own markings (the view changes). Add frames showing other markings (centre circle, penalty area): they share the camera position and fix the perspective. Only frames with markings can be judged.</p></div>`}`;
+}
+async function removeFrame() {
+  if (!confirm('Remove this frame from the venue? (the image file stays on disk)')) return;
+  const img = cur; cur = null;
+  await saveVenue({remove: [img]}); await loadVenue(V.name);
+}
+async function checkMarks() {
+  $('chknote').textContent = 'checking…';
+  try { OV.check = await api(`/api/venue/${enc(V.name)}/check`, {image: cur}); renderPanel(); draw(); }
+  catch (e) { $('chknote').textContent = ''; toast(e.message, true); }
+}
+
+function panel2() {
+  const ref = V.frames.find(f => f.reference);
+  const refH = V.hints[V.reference] || {features: []};
+  const nF = (refH.features || []).length, nIn = (refH.inside_pitch || []).length;
+  const els = new Set((refH.features || []).map(f => f.element));
+  const dirs = [...els].some(e => /halfway|goal_line|_front$/.test(e)) && [...els].some(e => /touchline|_far$|_near$/.test(e));
+  const circ = [...els].some(e => /circle|arc/.test(e));
+  let frames;
+  if (V.mode === 'fixed') {
+    const pooled = V.frames.filter(f => !f.reference && f.use && f.same_size).length;
+    const bad = V.frames.filter(f => !f.reference && f.use && !f.same_size).length;
+    frames = `<div class="ck ${pooled >= 40 ? 'ok' : pooled >= 5 ? 'mid' : 'mid'}">${pooled} frame${pooled === 1 ? '' : 's'} of other plays pooled <span class="note">(40+ recommended; 0 works but the perspective is weak)</span></div>`
+      + (bad ? `<div class="ck no">${bad} frame(s) of another size will be left out</div>` : '');
+  } else {
+    const marked = V.frames.filter(f => !f.reference && f.use && f.n_features).length;
+    frames = `<div class="ck ${marked >= 1 ? 'ok' : 'mid'}">${marked} other frame${marked === 1 ? '' : 's'} with markings <span class="note">(other parts of the pitch help a lot)</span></div>`;
+  }
+  const m = V.model;
+  let diag = '';
+  if (m && !m.error) {
+    const me = m.meta || {};
+    const rows = Object.entries(m.diagnostics || {}).map(([fr, d]) => `<div class="note" style="margin-top:4px"><b>${esc(fr.split('/').pop())}</b> f=${Math.round(d.f_px)} px (${d.hfov_deg.toFixed(1)}° wide), camera at (${d.camera_xyz_m.map(v => v.toFixed(1)).join(', ')}) m<br>${Object.entries(d.rms_px).map(([k, v]) => `<span class="tag ${v > 6 ? 'warn' : 'ok'}">${esc(k)} ${v.toFixed(1)} px</span>`).join(' ')}</div>`).join('');
+    diag = `<div class="card"><h3>Camera model ${m.stale ? '<span class="pill warn">markings changed since — calibrate again</span>' : '<span class="pill ok">ok</span>'}</h3>
+      <div class="kv"><span>created</span><span>${esc(m.created || '')}</span><span>camera</span><span>${FIXED_LABEL[m.mode] || m.mode}</span>
+      <span>pitch</span><span>${m.pitch[0].toFixed(1)} × ${m.pitch[1].toFixed(1)} m</span>
+      <span>frames</span><span>${me.n_frames ?? '?'} used${me.n_rejected ? `, ${me.n_rejected} left out (moved / other size)` : ''}</span>
+      <span>players as rulers</span><span>${me.n_people ?? '?'} (${me.n_upright ?? 0} upright)</span>
+      <span>perspective 90 %</span><span>goal-line vanishing row ${me.vp_row_ci90 ? me.vp_row_ci90.map(Math.round).join(' … ') : '?'}</span>
+      <span>time</span><span>${me.seconds ?? '?'} s</span></div>${rows}
+      <p class="note">Check by eye: the <span style="color:var(--mag)">magenta</span> pitch must sit on the painted lines of every frame (switch frames on the left). Residuals of a few px are normal; ≫ 6 px means a wrong marking.</p></div>`;
+  } else if (m && m.error) diag = `<div class="card"><h3>Camera model</h3><p class="note">${esc(m.error)}</p></div>`;
+  return `<div class="card"><h3>Before calibrating</h3>
+      <div class="ck ${ref ? 'ok' : 'no'}">reference frame ${ref ? esc(ref.name) : 'missing'}</div>
+      <div class="ck ${nF >= 2 ? 'ok' : 'no'}">${nF} marking${nF === 1 ? '' : 's'} on the reference</div>
+      <div class="ck ${dirs ? 'ok' : 'mid'}">lines in both directions ${dirs ? '' : '<span class="note">(e.g. halfway line + a touchline)</span>'}</div>
+      <div class="ck ${circ ? 'ok' : 'mid'}">a circle or arc ${circ ? '' : '<span class="note">(fixes the perspective best)</span>'}</div>
+      <div class="ck ${nIn >= 3 ? 'ok' : 'mid'}">${nIn} turf points</div>${frames}</div>
+    <div class="card"><h3>Calibrate</h3>
+      <div class="row"><label class="chk" title="Monte-Carlo cameras stored with the model: they give the uncertainty (P(offside), 90 % band). 150 = the default; 30 for a quick try.">uncertainty draws <input type="number" id="ndraws" value="${V.n_draws}" min="5" max="500" style="width:70px"></label></div>
+      <div class="row"><button class="b primary" id="btn-cal" onclick="calibrate()" ${nF >= 2 ? '' : 'disabled'}>▶ Calibrate camera</button>
+        <button class="b sm" onclick="$('ndraws').value=30">quick (30)</button>
+        ${job && job.status === 'running' ? `<button class="b sm danger" onclick="stopJob()">Stop</button>` : ''}</div>
+      <p class="note">Runs <code>calibrate_camera.py --config ${esc(V.config_path)}</code> in the background (≈ 1–3 min for a stationary camera, longer for several panning frames). You can keep working.</p>
+      <div id="jobbox"></div></div>${diag}`;
+}
+async function calibrate() {
+  try { const j = await api(`/api/venue/${enc(V.name)}/calibrate`, {n_draws: +$('ndraws').value}); watchJob(j.id); }
+  catch (e) { toast(e.message, true); }
+}
+function watchJob(id) { job = {id, status: 'running', lines: []}; jobNext = 0; clearTimeout(jobTimer); pollJob(); }
+async function pollJob() {
+  try {
+    const r = await api(`/api/job/${job.id}?since=${jobNext}`);
+    job.lines = job.lines.concat(r.lines); jobNext = r.next; const was = job.status; Object.assign(job, r.job);
+    if (step === 2) renderJob();
+    $('calpill').textContent = job.status === 'running' ? 'calibrating…' + (job.progress != null ? ' ' + Math.round(job.progress * 100) + ' %' : '') : $('calpill').textContent;
+    if (job.status === 'running') { $('calpill').className = 'pill run'; jobTimer = setTimeout(pollJob, 1200); }
+    else if (was === 'running') {
+      toast(job.status === 'done' ? 'Calibration done ✓' : 'Calibration ' + job.status, job.status !== 'done');
+      await loadVenue(V.name, cur); if (job.status === 'done') { OV.reproj = null; loadReproj(); }
+    }
+  } catch (e) { toast(e.message, true); }
+}
+function renderJob() {
+  const b = $('jobbox'); if (!b || !job) return;
+  b.innerHTML = `<div class="row"><span class="pill ${job.status === 'running' ? 'run' : job.status === 'done' ? 'ok' : 'bad'}">${job.status}</span><span class="note">${Math.round(job.elapsed || 0)} s</span></div>
+    <div class="bar"><div style="width:${Math.round((job.progress || (job.status === 'done' ? 1 : 0.03)) * 100)}%"></div></div><pre class="log" id="joblog"></pre>`;
+  const l = $('joblog'); l.textContent = job.lines.slice(-400).join('\n'); l.scrollTop = l.scrollHeight;
+}
+async function stopJob() { if (job) await api(`/api/job/${job.id}/stop`, {}); }
+async function loadReproj() {
+  if (!cur || !V.model || V.model.error) return;
+  const f = V.frames.find(x => x.image === cur);
+  if (f && !f.judgeable && V.mode === 'panning') { OV.reproj = null; $('tb2note').textContent = 'this frame was not calibrated (no markings when the camera was calibrated)'; draw(); return; }
+  try { OV.reproj = await api(`/api/venue/${enc(V.name)}/reprojection?image=${enc(cur)}`); $('tb2note').textContent = `pitch ${OV.reproj.pitch.map(v => v.toFixed(1)).join(' × ')} m, f = ${Math.round(OV.reproj.f_px)} px`; draw(); }
+  catch (e) { OV.reproj = null; $('tb2note').textContent = e.message; draw(); }
+}
+['ov-reproj', 'ov-marks'].forEach(id => $(id).onchange = draw);
+$('ov-check').onchange = async () => { if ($('ov-check').checked && !OV.check) { try { OV.check = await api(`/api/venue/${enc(V.name)}/check`, {image: cur}); } catch (e) { toast(e.message, true); } } draw(); };
+
+// ------------------------------------------------------------------ step 3: decide
+let opts = Object.assign({show_lines: true, show_pitch: true, show_metrics: false, uncertainty: true}, prefs.opts || {});
+let kitTeam = null, kitRegion = 'torso';
+function panel3() {
+  const f = V.frames.find(x => x.image === cur) || {};
+  const teams = teamNames(), pt = playTeams();
+  const sc = (V.scenarios || []).map((s, i) => `<div class="row" style="gap:4px">
+      <select data-sc="${i}" data-k="attacking">${[...new Set(pt.concat([s.attacking]))].map(t => `<option value="${esc(t)}" ${t === s.attacking ? 'selected' : ''}>${esc(t)}${pt.includes(t) ? '' : ' (no team rule)'}</option>`).join('')}</select>
+      <span class="note">attack</span>
+      <select data-sc="${i}" data-k="direction"><option value="right" ${s.direction === 'right' ? 'selected' : ''}>→ right</option><option value="left" ${s.direction === 'left' ? 'selected' : ''}>← left</option></select>
+      <span class="note">vs</span>
+      <select data-sc="${i}" data-k="defending">${[...new Set(pt.concat([s.defending]))].map(t => `<option value="${esc(t)}" ${t === s.defending ? 'selected' : ''}>${esc(t)}${pt.includes(t) ? '' : ' (no team rule)'}</option>`).join('')}</select>
+      <label class="chk" title="The defending goalkeeper is in the picture: the line goes through the 2nd-deepest defender"><input type="checkbox" data-sc="${i}" data-k="gk_visible" ${s.gk_visible ? 'checked' : ''}> GK in view</label>
+      <span class="x" style="cursor:pointer;color:var(--muted)" onclick="delScenario(${i})">✕</span></div>`).join('');
+  const teamRows = (V.teams || []).map(t => `<div class="it"><span class="sw" style="background:${teamColor(t.team)}"></span><span class="t"><b>${esc(t.team)}</b> ${t.rules.length ? t.rules.map(r => `<span class="sws" style="background:${hsvMid(r)}" title="${esc(r.region)} H ${r.hsv_lo[0]}–${r.hsv_hi[0]} S ${r.hsv_lo[1]}–${r.hsv_hi[1]} V ${r.hsv_lo[2]}–${r.hsv_hi[2]}"></span> ${esc(r.region)}`).join(' + ') : '<span class="note">everyone else (default)</span>'}</span></div>`).join('');
+  let warn = '';
+  if (!V.model || V.model.error) warn = `<div class="card"><p class="note" style="margin:0">⚠ Not calibrated yet — go to step 2.</p></div>`;
+  else if (!f.judgeable) warn = `<div class="card"><p class="note" style="margin:0">⚠ This frame cannot be judged with the current camera model: ${V.mode === 'panning' ? 'a panning camera only knows the frames that had markings when it was calibrated — add markings to this frame (step 1) and calibrate again.' : 'it has another size than the calibrated camera (' + (V.model.frame_size || []).join('×') + ').'}</p></div>`;
+  return `${warn}
+    <div class="card"><h3>Teams <span class="note">first match wins, top to bottom</span></h3><div class="items">${teamRows}</div>
+      <div class="row"><input type="text" id="kitteam" list="tnames" placeholder="team" value="${esc(kitTeam || pt[0] || '')}" style="width:100px"><datalist id="tnames">${teams.map(t => `<option>${esc(t)}</option>`).join('')}</datalist>
+        <select id="kitregion"><option value="torso" ${kitRegion === 'torso' ? 'selected' : ''}>shirt</option><option value="shorts" ${kitRegion === 'shorts' ? 'selected' : ''}>shorts</option></select>
+        <button class="b sm ${tool === 'sample' ? 'on' : ''}" onclick="setTool('sample');renderPanel()">🎨 click a ${kitRegion === 'shorts' ? 'pair of shorts' : 'shirt'}</button></div>
+      <p class="note" style="margin:2px 0">Type a team name, press 🎨 and click one of its shirts on the frame (do it for each team; the last team without a rule takes everyone else). Check the boxes in <b>Frame</b> view.</p>
+      ${lastSample ? `<div class="note">last sample <span class="sws" style="background:${lastSample.rgb}"></span> HSV ${lastSample.hsv.join(' / ')} (${esc(lastSample.kind)}) → ${esc(lastSample.team)}</div>` : ''}
+      <details><summary>edit the colour rules (JSON)</summary><textarea id="teamsjson">${esc(JSON.stringify(V.teams, null, 1))}</textarea>
+        <div class="row"><button class="b sm" onclick="saveTeamsJSON()">Save rules</button><span class="note">REF = referee; a team without rules = everyone not matched above.</span></div></details></div>
+    <div class="card"><h3>Attacking direction</h3>${sc || '<span class="note">none</span>'}
+      <div class="row"><button class="b sm" onclick="addScenario()">+ add</button><button class="b sm" onclick="bothWays()" title="Judge both attacking directions of the first team">both directions</button></div>
+      <p class="note">One frame cannot tell who attacks where: each line is one hypothesis, judged separately.</p></div>
+    <div class="card"><h3>Ball</h3>
+      <label class="chk"><input type="radio" name="ballm" value="auto" ${ball.mode === 'auto' ? 'checked' : ''}> detect automatically</label>
+      <label class="chk"><input type="radio" name="ballm" value="click" ${ball.mode === 'click' ? 'checked' : ''}> I click it ${ball.xy ? `<span class="note">(${ball.xy.map(Math.round).join(', ')})</span>` : ''}</label>
+      <label class="chk"><input type="radio" name="ballm" value="none" ${ball.mode === 'none' ? 'checked' : ''}> ignore the ball <span class="note">(line = 2nd-last defender)</span></label></div>
+    <div class="card"><h3>Show</h3>
+      <label class="chk"><input type="checkbox" class="opt" data-o="show_lines" ${opts.show_lines ? 'checked' : ''}> offside line &amp; player lines</label>
+      <label class="chk"><input type="checkbox" class="opt" data-o="show_metrics" ${opts.show_metrics ? 'checked' : ''}> metrics (distance to the line, P(offside), 90 % band)</label>
+      <label class="chk"><input type="checkbox" class="opt" data-o="show_pitch" ${opts.show_pitch ? 'checked' : ''}> calibrated pitch markings</label>
+      <label class="chk" title="Re-evaluates the decision with the camera draws stored at calibration + keypoint noise"><input type="checkbox" class="opt" data-o="uncertainty" ${opts.uncertainty ? 'checked' : ''}> uncertainty (Monte-Carlo)</label>
+      <div class="row"><button class="b primary" id="btn-decide" onclick="decide()" ${V.model && !V.model.error && f.judgeable ? '' : 'disabled'}>▶ Decide on this frame</button></div></div>
+    <div id="results">${resultsHTML()}</div>`;
+}
+function hsvMid(r) {
+  const h = ((r.hsv_lo[0] + r.hsv_hi[0]) / 2) * 2, s = ((r.hsv_lo[1] + r.hsv_hi[1]) / 2) / 255, v = ((r.hsv_lo[2] + r.hsv_hi[2]) / 2) / 255;
+  const f = n => { const k = (n + h / 60) % 6; return Math.round(255 * (v - v * s * Math.max(0, Math.min(k, 4 - k, 1)))); };
+  return `rgb(${f(5)},${f(3)},${f(1)})`;
+}
+function wire3() {
+  document.querySelectorAll('[data-sc]').forEach(x => x.onchange = () => {
+    const i = +x.dataset.sc, k = x.dataset.k; V.scenarios[i][k] = x.type === 'checkbox' ? x.checked : x.value; saveVenue({scenarios: V.scenarios}, true);
+  });
+  document.querySelectorAll('input[name=ballm]').forEach(x => x.onchange = () => { ball.mode = x.value; if (x.value === 'click') setTool('ball'); draw(); });
+  document.querySelectorAll('.opt').forEach(x => x.onchange = () => { opts[x.dataset.o] = x.checked; prefs.opts = opts; savePrefs(); if (R && x.dataset.o !== 'uncertainty') rerender(); });
+  const kt = $('kitteam'); if (kt) kt.onchange = () => kitTeam = kt.value.trim();
+  const kr = $('kitregion'); if (kr) kr.onchange = () => { kitRegion = kr.value; renderPanel(); };
+}
+function addScenario() { const pt = playTeams(); V.scenarios.push({attacking: pt[0] || 'HOME', defending: pt[1] || pt[0] || 'AWAY', direction: 'right', gk_visible: false}); saveVenue({scenarios: V.scenarios}, true); }
+function delScenario(i) { V.scenarios.splice(i, 1); saveVenue({scenarios: V.scenarios}, true); }
+function bothWays() { const s = V.scenarios[0] || {attacking: playTeams()[0], defending: playTeams()[1]}; V.scenarios = ['right', 'left'].map(d => ({attacking: s.attacking, defending: s.defending, direction: d, gk_visible: !!s.gk_visible})); saveVenue({scenarios: V.scenarios}, true); }
+async function saveTeamsJSON() {
+  let t; try { t = JSON.parse($('teamsjson').value); } catch (e) { return toast('JSON: ' + e.message, true); }
+  if (await saveVenue({teams: t}, true)) toast('Team rules saved');
+}
+async function decide(silent) {
+  const b = $('btn-decide'); if (b) { b.disabled = true; b.textContent = 'Deciding…'; }
+  try {
+    R = await api(`/api/venue/${enc(V.name)}/predict`, {image: cur, ball: {mode: ball.mode, xy: ball.xy}, ...opts});
+    if (resView === 'frame' && R.scenarios.length) resView = R.scenarios[0].name;
+    renderResViews(); renderPanel(); draw(); showRes(); $('st-save').textContent = '';
+    const s = R.scenarios.map(x => `${x.name}: ${x.n_offside ? x.n_offside + ' offside' : 'onside'}`).join(' · ');
+    if (!silent) { toast(s || 'no decision (see below)'); const r = $('results'); if (r) $('panel').scrollTo({top: r.offsetTop - 12, behavior: 'smooth'}); }
+    await refreshFramesQuiet();
+  } catch (e) { toast(e.message, true); if (b) { b.disabled = false; b.textContent = '▶ Decide on this frame'; } }
+}
+async function refreshFramesQuiet() { try { const v = await api('/api/venue/' + enc(V.name)); v.hints[cur] = V.hints[cur]; V = v; renderFrames(); } catch (e) {} }
+async function rerender() {
+  try { R = await api(`/api/venue/${enc(V.name)}/render`, {image: cur, ball: {mode: ball.mode, xy: ball.xy}, ...opts}); showRes(); renderPanel(); }
+  catch (e) { toast(e.message, true); }
+}
+async function loadSavedResult() {
+  if (!cur || !V.frames.find(x => x.image === cur && x.result)) return;
+  try {
+    const r = await api(`/api/venue/${enc(V.name)}/result?image=${enc(cur)}`);
+    if (r.result && !R && step === 3) { $('st-save').textContent = 'saved decision from ' + r.result.created + ' — ▶ Decide to show it again'; }
+  } catch (e) {}
+}
+function resultsHTML() {
+  if (!R) return '';
+  const cards = R.scenarios.map(s => {
+    const rel = s.attackers.filter(a => a.relevant);
+    const off = rel.filter(a => a.decision === 'OFFSIDE');
+    return `<div class="card"><h3>If ${esc(s.attacking)} attack ${s.direction === 'right' ? '→' : '←'}</h3>
+      <div class="verdict ${off.length ? 'OFFSIDE' : 'ONSIDE'}">${off.length ? off.map(a => '#' + a.id).join(', ') + ' OFFSIDE' : 'ONSIDE'}</div>
+      <div class="note">line set by ${esc(s.line_by)} · X = ${s.line_X.toFixed(2)} m (90 % ${s.line_ci90.map(v => v.toFixed(2)).join(' … ')})</div>
+      <table class="dec"><tr><th>#</th><th>team</th><th>decision</th><th>vs line</th><th>P(off)</th></tr>
+      ${rel.map(a => `<tr><td>#${a.id}</td><td>${esc(a.team)}</td><td class="${a.decision}">${a.decision}</td><td>${a.margin_m >= 0 ? '+' : ''}${Math.round(a.margin_m * 100)} cm</td><td>${a.p_offside.toFixed(2)}</td></tr>`).join('') || '<tr><td colspan=5 class="note">no attacker near the line</td></tr>'}</table></div>`;
+  }).join('');
+  const sk = Object.entries(R.skipped || {}).map(([n, w]) => `<div class="ck no">${esc(n)}: ${esc(w)}</div>`).join('');
+  const t = R.timings || {};
+  const pl = R.players.map(p => `<div class="p ${p.id === pickId ? 'hl' : ''}" id="pl${p.id}"><span>#${p.id}</span><span class="note">${p.x_m != null ? `X ${p.x_m.toFixed(1)} m` : ''}${p.upright ? ' · upright' : ''}${p.occluded ? ' · occluded' : ''}</span>
+     <select onchange="overrideTeam(${p.id}, this.value)">${[...new Set(teamNames().concat(['REF', 'UNKNOWN', p.team]))].map(n => `<option ${n === p.team ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>`).join('');
+  return `${cards}${sk ? `<div class="card">${sk}</div>` : ''}
+    <div class="card"><h3>Players <span class="note">${R.players.length} found · change a team if the kit rule got it wrong</span></h3><div class="plist">${pl}</div>
+      ${Object.keys(V.team_overrides || {}).length ? `<div class="row"><button class="b sm" onclick="clearOverrides()">clear ${Object.keys(V.team_overrides).length} manual team fix(es)</button></div>` : ''}</div>
+    <div class="card"><div class="kv"><span>ball</span><span>${esc(R.ball_source)}${R.ball_pixel ? ' (' + R.ball_pixel.map(Math.round).join(', ') + ')' : ''}</span>
+      <span>time</span><span>${t.detection_cached ? 'detection reused · ' : `detection ${t.detection}s · pose ${t.pose}s · `}decision ${t.decision_total}s${t.render != null ? ' · images ' + t.render + 's' : ''}</span>
+      <span>saved</span><span><a href="${BASE}/file?p=${enc(R.result_json)}" target="_blank">offside_result.json</a> · ${Object.entries(R.images).map(([n, f]) => `<a href="${BASE}/file?p=${enc(f.file)}&v=${f.v}" target="_blank">${esc(n)}</a>`).join(' · ')}</span></div></div>`;
+}
+async function overrideTeam(id, team) {
+  const o = Object.assign({}, V.team_overrides || {}); o[String(id)] = team;
+  if (await saveVenue({team_overrides: o})) decide(true);
+}
+async function clearOverrides() { if (await saveVenue({team_overrides: {}})) decide(true); }
+function verdictHTML() {
+  if (!R || step !== 3) return '';
+  return R.scenarios.map(s => { const off = s.attackers.filter(a => a.relevant && a.decision === 'OFFSIDE');
+    return `<span title="${esc(s.name)}">${s.direction === 'right' ? '→' : '←'} ${esc(s.attacking)}: <b class="${off.length ? 'OFFSIDE' : 'ONSIDE'}">${off.length ? off.map(a => '#' + a.id).join(' ') + ' OFFSIDE' : 'ONSIDE'}</b></span>`; }).join(' &nbsp;·&nbsp; ');
+}
+function renderResViews() {
+  const el = $('resviews'); if (!el) return;
+  $('verdict').innerHTML = verdictHTML();
+  const views = [['frame', 'Frame']].concat(R ? R.scenarios.map(s => [s.name, (s.direction === 'right' ? '→ ' : '← ') + s.attacking]) : []).concat(R && R.images.birds_eye ? [['birds_eye', "Bird's-eye"]] : []);
+  el.innerHTML = views.map(([k, l]) => `<span class="chip ${k === resView ? 'on' : ''}" data-rv="${esc(k)}">${esc(l)}</span>`).join('');
+  el.querySelectorAll('.chip').forEach(c => c.onclick = () => { resView = c.dataset.rv; renderResViews(); showRes(); });
+}
+function showRes() {
+  const img = $('resimg');
+  if (step !== 3 || resView === 'frame' || !R || !R.images[resView]) { img.style.display = 'none'; cv.style.display = 'block'; $('fullres').style.display = 'none'; draw(); return; }
+  const f = R.images[resView];
+  img.src = `${BASE}/img?p=${enc(f.file)}&w=2400&v=${f.v}`; img.style.display = 'block'; cv.style.display = 'none'; $('loupe').style.display = 'none';
+  $('fullres').href = `${BASE}/file?p=${enc(f.file)}&v=${f.v}`; $('fullres').style.display = '';
+}
+$('resimg').onclick = () => window.open($('fullres').href, '_blank');
+function draw3(px) {
+  if (R) for (const p of R.players) {
+    const b = p.box, col = teamColor(p.team);
+    ctx.strokeStyle = col; ctx.lineWidth = (p.id === pickId ? 4 : 2) * px; ctx.strokeRect(b[0], b[1], b[2] - b[0], b[3] - b[1]);
+    label(ctx, `#${p.id} ${p.team}`, b[0], b[1] - 4 * px, p.team === 'REF' ? '#ddd' : col, px);
+  }
+  const bp = ball.mode === 'click' ? ball.xy : R && R.ball_pixel;
+  if (bp && ball.mode !== 'none') { ctx.beginPath(); ctx.arc(bp[0], bp[1], 9 * px, 0, 2 * Math.PI); ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 3 * px; ctx.stroke(); label(ctx, ball.mode === 'click' ? 'ball (yours)' : 'ball (detected)', bp[0] + 12 * px, bp[1] - 10 * px, '#ffe14d', px); }
+  if (!R) { ctx.setTransform(1, 0, 0, 1, 0, 0); }
+}
+async function click3(x, y) {
+  if (tool === 'ball') { ball = {mode: 'click', xy: [x, y]}; renderPanel(); draw(); if (R) decide(true); return; }
+  if (tool === 'sample') {
+    const team = ($('kitteam') && $('kitteam').value.trim()) || kitTeam;
+    if (!team) return toast('Type the team name first', true);
+    try {
+      const s = await api(`/api/venue/${enc(V.name)}/sample`, {image: cur, x, y, r: 5, region: kitRegion});
+      let teams = clone(V.teams); let at = teams.findIndex(t => t.team === team && t.rules.length);
+      teams = teams.filter(t => !(t.team === team && t.rules.length));
+      if (at < 0) { at = teams.findIndex(t => !t.rules.length); if (at < 0) at = teams.length; }
+      teams.splice(at, 0, ...s.rules.map(r => ({team, rules: [r]})));
+      kitTeam = team; lastSample = Object.assign(s, {team});
+      if (await saveVenue({teams}, true)) { toast(`${team}: ${s.kind} kit rule set`); if (R) decide(true); }
+    } catch (e) { toast(e.message, true); }
+    return;
+  }
+  if (R) {
+    const hit = R.players.filter(p => x >= p.box[0] && x <= p.box[2] && y >= p.box[1] && y <= p.box[3]).sort((a, b) => (a.box[2] - a.box[0]) - (b.box[2] - b.box[0]))[0];
+    pickId = hit ? hit.id : null; draw();
+    $('results').innerHTML = resultsHTML();
+    const el = pickId != null && $('pl' + pickId); if (el) el.scrollIntoView({block: 'nearest'});
+  }
+}
+
+boot();
+</script>
+</body>
+</html>

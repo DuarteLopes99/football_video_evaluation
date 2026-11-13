@@ -1,0 +1,49 @@
+{
+  "name": "Anadia FC vs SVA - main (stationary) camera",
+  "models_dir": "models",
+  "output_dir": "outputs",
+  "seed": 0,
+
+  "decision_frame": {
+    "image": "data/frame_decision.png",
+    "features": [
+      {"element": "halfway_line",  "polyline": [[1710, 225], [1716, 1570]], "band": 30},
+      {"element": "touchline_far", "polyline": [[400, 223], [2929, 216]], "band": 12, "loose": true, "thr": 1.5},
+      {"element": "centre_circle", "bbox": [900, 380, 2550, 720]}
+    ],
+    "inside_pitch": [[0, 1560], [730, 1560], [1465, 1560], [2200, 1560], [2929, 1560]],
+    "ignore_regions":    [[0, 0, 800, 200], [2500, 80, 2930, 170]],
+    "occluding_regions": [[1380, 760, 1560, 900]],
+    "ball_pixel": [1972, 947],
+    "player_min_y": 225
+  },
+
+  "camera": {
+    "mode": "fixed",
+    "calibration_frames": ["data/calibration_frames/*.png"],
+    "camera_model": "calibration/anadia_camera.json",
+    "n_draws": 150
+  },
+
+  "detector": {"tile": 1150, "stride": 900},
+
+  "teams": [
+    {"team": "AFC", "rules": [{"region": "shorts", "hsv_lo": [90, 60, 60], "hsv_hi": [125, 255, 255], "min": 0.2}]},
+    {"team": "REF", "rules": [
+      {"region": "torso",  "hsv_lo": [0, 0, 150],  "hsv_hi": [180, 60, 255],  "max": 0.3},
+      {"region": "torso",  "hsv_lo": [90, 60, 60], "hsv_hi": [125, 255, 255], "max": 0.05},
+      {"region": "shorts", "hsv_lo": [0, 0, 0],    "hsv_hi": [180, 255, 74],  "max": 0.5}]},
+    {"team": "SVA", "rules": []}
+  ],
+  "team_overrides": {},
+
+  "scenarios": [
+    {"attacking": "AFC", "defending": "SVA", "direction": "right"},
+    {"attacking": "AFC", "defending": "SVA", "direction": "left"}
+  ],
+
+  "priors": {"half_length": [52.5, 2.5], "half_width": [34.0, 2.0], "shoulder_h": [1.40, 0.25], "pp_sigma": 40},
+  "monte_carlo": {"n": 150, "seed": 1},
+  "draw_elements": ["halfway_line", "touchline_far", "centre_circle"],
+  "show_metrics": false
+}

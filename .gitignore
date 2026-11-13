@@ -1,14 +1,26 @@
 __pycache__/
 .ipynb_checkpoints/
 .venv/
-data/raw/
-data/videos/*
-!data/videos/README.md
-data/xg/
-models/*.onnx
-models/*.pt
-outputs/
-!outputs/.gitkeep
+.DS_Store
 *.mp4
 *.mov
-.DS_Store
+
+# global_video_analysis/
+global_video_analysis/data/raw/
+global_video_analysis/data/videos/*
+!global_video_analysis/data/videos/README.md
+global_video_analysis/data/xg/
+global_video_analysis/outputs/
+!global_video_analysis/outputs/.gitkeep
+
+# both projects: model weights are downloaded (scripts/get_models.py, offside_code/scripts/download_models.py)
+**/models/*.onnx
+**/models/*.pt
+
+# offside_code/: images and results of the venues made in the dashboard's Offside tab (venue.json is kept)
+offside_code/venues/*/images/
+offside_code/venues/*/results/
+offside_code/venues/*/*_background.png
+
+# TensorRT engine cache (detection.runtime: tensorrt)
+**/models/trt_cache/

@@ -1,0 +1,12 @@
+$ python calibrate_camera.py
+[venue] 1 frame(s): frame_decision.png
+[venue] 1 frames pooled, 16 player observations (0 upright)
+[venue] f=4999px  goal-line vanishing row 90% CI [-348. -337.]  (70.9 s)
+[venue] camera model -> calibration/anadia_camera.json   background -> calibration/anadia_camera_background.png
+
+$ python run_offside.py
+players: #0:AFC, #1:SVA, #2:AFC, #3:AFC, #4:SVA, #5:SVA, #6:SVA, #7:REF, #8:AFC, #9:AFC, #10:SVA, #11:AFC, #12:SVA, #13:SVA, #14:AFC, #15:SVA, #16:AFC
+AFC attacks right: #14 OFFSIDE, #16 ONSIDE
+AFC attacks left: #0 OFFSIDE
+ball: detected (score 0.28) [1972.5, 949.4]
+timings (s): {'detection': 1.021, 'pose': 0.207, 'teams': 0.016, 'geometry': 0.001, 'uncertainty': 0.18, 'decision_total': 1.425, 'render': 0.234, 'total': 1.659}

@@ -1,0 +1,34 @@
+{
+  "type": "ptz",
+  "C": [
+    51.74939216837552,
+    -2.5562269880837594,
+    3.9478826435599674
+  ],
+  "roll": -0.015491364527981924,
+  "margin_end": 2.183210229295039,
+  "margin_far": 0.0010769078415874419,
+  "pitch_length": 105.35072760725902,
+  "pitch_width": 61.63468078863018,
+  "width": 640,
+  "height": 360,
+  "anchors": {
+    "301127": [
+      -1.104324218780311,
+      0.050955555557532665,
+      628.1890578923434
+    ],
+    "312247": [
+      1.0714462343315854,
+      0.0016001235537396916,
+      556.3841152740799
+    ]
+  },
+  "meta": {
+    "video": "data/videos/\ud83d\udc9b\ud83d\udc99 Canedo Fc - UD Mansores 1810 Jornada 2 \ud83d\udc9b\ud83d\udc99_1080p.mp4",
+    "solved_from": "venue camera camera_canedo_ptz.json + poses from your clicks",
+    "landmark_err_median_px": 12.5,
+    "video_width": 1920,
+    "video_height": 1080
+  }
+}
