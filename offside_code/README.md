@@ -35,9 +35,9 @@ in an offside position, green = onside, magenta = calibrated pitch template re-p
 ## Quick start
 
 ```bash
-cd offside_code                                # inside football_video_evaluation/ (the shared ../.venv works too)
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+# from football_video_evaluation/: shared .venv with Python 3.12-3.14 + pinned packages (Windows: py setup_env.py)
+python3 setup_env.py && source .venv/bin/activate      # Windows: .venv\Scripts\activate
+cd offside_code                                # (on its own: pip install -r requirements.txt -c ../constraints.txt)
 python offside_studio.py                       # the web workflow (same as the dashboard's Offside tab)
 python scripts/download_models.py              # only if models/ is empty (≈ 41 MB, OpenCV Model Zoo)
 

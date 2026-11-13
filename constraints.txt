@@ -1,0 +1,32 @@
+# Exact versions used on EVERY computer (Mac, Windows, Linux), so a match analysed on one machine gives the same
+# numbers on another. setup_env.py installs with:  pip install -r requirements.txt -c constraints.txt
+#
+# Supported Python: 3.12, 3.13, 3.14 (3.13 recommended, the version the test suite runs on).
+#   * 3.15 (Oct 2026) is NOT supported yet: onnxruntime publishes no cp315 wheels.
+#   * 3.11 and older: numpy 2.5 / scipy 1.18 need 3.12+.
+# Every pin below has binary wheels for cp312-cp314 on win_amd64, macOS arm64 and manylinux x86_64
+# (checked on PyPI 2026-11-13). Tested together: global_video_analysis 31 tests, offside_code 3 tests.
+#
+# To upgrade: change a pin here, run setup_env.py, run both test suites, commit. Keep the per-project
+# requirements.txt ranges compatible with these pins.
+
+# --- core (both projects)
+numpy==2.5.3
+scipy==1.18.1
+opencv-python==5.0.0.93
+matplotlib==3.11.2
+
+# --- global_video_analysis
+pandas==3.0.5
+scikit-learn==1.9.1
+PyYAML==6.0.3
+
+# --- detector runtime (optional: without it the detector falls back to cv2.dnn)
+# One of the two is installed by setup_env.py, never both: -gpu when nvidia-smi finds an NVIDIA GPU.
+# onnxruntime >= 1.24 needs macOS 14+ on Apple Silicon; older macOS keeps cv2.dnn.
+onnxruntime==1.29.0
+onnxruntime-gpu==1.29.0
+
+# --- tools (notebooks, tests)
+jupyter==1.1.1
+pytest==9.1.1

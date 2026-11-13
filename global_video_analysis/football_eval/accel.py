@@ -23,8 +23,8 @@ Nothing has to be configured. With ``detection.runtime: auto`` and ``detection.d
 * **PyTorch** models (ultralytics detectors / pitch keypoints, SigLIP team embeddings) get ``cuda:0`` on NVIDIA,
   ``mps`` on Apple Silicon, else ``cpu``.
 
-``start.command`` / ``start.bat`` install ``onnxruntime-gpu`` instead of ``onnxruntime`` when ``nvidia-smi`` finds
-an NVIDIA GPU. Force the CPU with ``--device cpu`` (CLI) or ``detection.runtime: cpu`` / ``detection.device: cpu``.
+``setup_env.py`` (run by ``start.command`` / ``start.bat``) installs ``onnxruntime-gpu`` instead of ``onnxruntime``
+when ``nvidia-smi`` finds an NVIDIA GPU. Force the CPU with ``--device cpu`` (CLI) or ``detection.runtime: cpu`` / ``detection.device: cpu``.
 
 Check what this computer will use::
 
@@ -165,8 +165,8 @@ def summary() -> Dict[str, object]:
          "cv2_cuda_devices": cv2_cuda_devices(), "torch_device": torch_device("auto")}
     hint = None
     if s["nvidia_gpus"] and "CUDAExecutionProvider" not in avail:
-        hint = ("NVIDIA GPU found but onnxruntime has no CUDA provider: pip uninstall -y onnxruntime && "
-                "pip install 'onnxruntime-gpu[cuda,cudnn]'  (start.command / start.bat do this automatically)")
+        hint = ("NVIDIA GPU found but onnxruntime has no CUDA provider: run 'python setup_env.py --force' "
+                "in the football_video_evaluation folder (it installs onnxruntime-gpu[cuda,cudnn])")
     s["hint"] = hint
     return s
 
