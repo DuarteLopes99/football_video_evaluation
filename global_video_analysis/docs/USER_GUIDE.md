@@ -13,7 +13,7 @@ This guide is for using the system day to day. Technical details are in the READ
 | **Windows:** double-click `start.bat` in `football_video_evaluation\` | the same on a PC (Python 3.10+ from python.org needed once); *Desktop shortcut* makes `.bat` files |
 | `python scripts/launcher.py --video <file> --start` | starts processing that recording right away (see §7) |
 
-The first start creates the Python environment, which takes a few minutes once. A Terminal window stays open
+The first start creates the Python environment (`setup_env.py`: Python 3.12-3.14 and the exact package versions of `constraints.txt`, the same on every computer), which takes a few minutes once. A Terminal window stays open
 while the launcher runs. Closing it, or the **Quit** button at the top right, stops the launcher and every job
 it started. If the launcher is already running, a shortcut just opens it in the browser with the chosen video.
 
@@ -179,7 +179,9 @@ the match analysis.
 | The log says "no match setup for this video" | the setup's video path has another file name: open the setup for this recording in the launcher (step 1) or pass `--setup` |
 | Teams swapped or mixed | add kit clicks in sun **and** shade on 3–4 moments (setup step 4), then process again. The run prints how many clicked samples are recognised by the others ("leave-one-out"): below ~90 % the kits are hard to tell apart — add samples |
 | Processing too slow | Speed *fast*; make sure `onnxruntime` is installed (`.venv/bin/pip install onnxruntime`, done automatically by start.command); set the periods so half-time is skipped |
-| NVIDIA GPU not used (log says `CPUExecutionProvider`) | `python -m football_eval.accel` (from `global_video_analysis/`, venv active) shows what is found and the fix; usually `pip uninstall -y onnxruntime && pip install "onnxruntime-gpu[cuda,cudnn]"` (start.command / start.bat do it) and an up-to-date NVIDIA driver |
+| NVIDIA GPU not used (log says `CPUExecutionProvider`) | `python -m football_eval.accel` (from `global_video_analysis/`, venv active) shows what is found; `python setup_env.py --force` reinstalls `onnxruntime-gpu`; update the NVIDIA driver |
+| `No matching distribution found for onnxruntime` / `Requires-Python` errors | the computer's Python is not supported (3.15 is too new, 3.11 too old). Run `start.bat` / `start.command` again: `setup_env.py` uses or offers to install Python 3.13 and rebuilds `.venv` |
+| "Environment differs from constraints.txt" at start | packages were installed by hand: `python setup_env.py --force` puts back the pinned versions |
 | Many throw-ins on the camera side missing | the near touchline is out of view: they are inferred when the ball leaves the bottom of the picture (rulebook §3.1) — check them in the review |
 | No shots found | expected on 640 × 360 streams (2–5 px ball): add them in the review, *Missing events* |
 | A job failed | the **Jobs** tab has its full log; the last lines say why |

@@ -47,9 +47,8 @@ probability from the calibration uncertainty; the bird's-eye view shows the reco
 ## Start
 
 Double-click **`start.command`** (macOS; `./start.command` on Linux, **`start.bat`** on Windows) — or the
-*Football Video Analysis* shortcut on the Desktop. The first
-run creates `.venv/` and installs both projects' requirements; then the dashboard opens at
-http://127.0.0.1:8770:
+*Football Video Analysis* shortcut on the Desktop. Both run `setup_env.py` (see *Python and packages* below), which
+builds `.venv/` the first time; then the dashboard opens at http://127.0.0.1:8770:
 
 * tabs **Analyse · Manual decisions · Match screen · Results & opportunities** — `global_video_analysis`;
 * tab **Offside** — `offside_code` (venues, click-to-mark calibration, decision on a chosen frame);
@@ -65,11 +64,32 @@ From a terminal with the venv active, each project also runs on its own:
 `python global_video_analysis/scripts/launcher.py`, `python offside_code/offside_studio.py`, and all the CLIs
 described in the two READMEs (run them from inside their folder).
 
+## Python and packages (the same on every computer)
+
+| | |
+|---|---|
+| **Python** | **3.12, 3.13 or 3.14**, 64-bit; 3.13 recommended (`.python-version`). **3.15 is not supported yet**: onnxruntime has no wheels for it, which is the `No matching distribution found for onnxruntime` error. 3.11 and older are too old for numpy 2.5 / scipy 1.18 |
+| **Versions** | exact pins in [`constraints.txt`](constraints.txt) (numpy, scipy, pandas, OpenCV, scikit-learn, matplotlib, PyYAML, onnxruntime), tested together; [`requirements.txt`](requirements.txt) lists what both projects need |
+| **Setup** | [`setup_env.py`](setup_env.py), run by `start.command` / `start.bat`: finds a supported Python (offers to install 3.13 with the Python install manager, winget or Homebrew if there is none), rebuilds `.venv` when it was made with another Python, installs the pins, picks `onnxruntime-gpu` on an NVIDIA computer, and checks the result |
+| **Check** | `python setup_env.py --check`, or at every dashboard start: any difference from the pins is printed |
+| **Optional** | PyTorch-based upgrades (ultralytics, SigLIP, ByteTrack, OCR): [`requirements-optional.txt`](requirements-optional.txt) |
+
+```bash
+python3 setup_env.py              # build / repair .venv (fast when nothing changed)   Windows: py setup_env.py
+python3 setup_env.py --check      # compare the installed versions with constraints.txt
+python3 setup_env.py --force      # reinstall everything
+```
+
+Any Python 3.8+ can run `setup_env.py` (the Mac's own `python3`, a new 3.15 ...): it only bootstraps and builds the
+environment with a supported version. Each computer has its own `.venv`; if the folder is synced between a Mac and a
+PC, the second one gets `.venv-windows` / `.venv-posix` instead of overwriting the first. To upgrade a package:
+change its pin in `constraints.txt`, run `setup_env.py` and both test suites, commit.
+
 ## Windows
 
-Supported the same way as macOS / Linux. Install Python 3.10+ from python.org (tick *Add python.exe to PATH*), then
-double-click **`start.bat`**: it creates `.venv\`, installs the packages, switches to the GPU build on an NVIDIA
-computer and opens the dashboard. Optional: [ffmpeg](https://www.gyan.dev/ffmpeg/builds/) on the PATH cuts the
+Supported the same way as macOS / Linux. Double-click **`start.bat`**: `setup_env.py` uses Python 3.13 (or 3.12 /
+3.14; if the PC only has 3.15 or none, it offers to install 3.13 with `pymanager` or `winget`), creates `.venv\`,
+installs the pinned packages, switches to the GPU build on an NVIDIA computer and opens the dashboard. Optional: [ffmpeg](https://www.gyan.dev/ffmpeg/builds/) on the PATH cuts the
 opportunity clips faster (without it OpenCV re-encodes them). Notes:
 
 * everything is read and written as UTF-8 (`start.bat` also sets `PYTHONUTF8=1`), so setups, reports and logs made
@@ -90,7 +110,7 @@ The analysis runs on any laptop's CPU and uses a GPU by itself when the computer
 
 | Computer | What is used | Setup |
 |---|---|---|
-| NVIDIA GPU (Windows / Linux) | onnxruntime CUDA (TensorRT with `--device tensorrt`); PyTorch models on `cuda:0` | none: `start.bat` / `start.command` install `onnxruntime-gpu[cuda,cudnn]` once when `nvidia-smi` works (needs a recent NVIDIA driver) |
+| NVIDIA GPU (Windows / Linux) | onnxruntime CUDA (TensorRT with `--device tensorrt`); PyTorch models on `cuda:0` | none: `setup_env.py` installs `onnxruntime-gpu[cuda,cudnn]` (same version as the CPU pin) when `nvidia-smi` works (needs a recent NVIDIA driver) |
 | Other GPU on Windows | DirectML | `pip uninstall onnxruntime && pip install onnxruntime-directml` |
 | Mac (Apple Silicon) | CoreML when faster than the CPU; PyTorch models on `mps` | none |
 | No GPU | CPU (all cores) | none |
@@ -103,8 +123,10 @@ built with it (`OFFSIDE_DEVICE=cpu` to disable); it works on one frame, so the C
 
 ```
 football_video_evaluation/
-├── start.command            dashboard launcher, macOS / Linux (shared .venv, installs the GPU build when there is one)
+├── start.command            dashboard launcher, macOS / Linux  (runs setup_env.py --run)
 ├── start.bat                same on Windows
+├── setup_env.py             supported Python + .venv + pinned packages + GPU runtime, the same on every computer
+├── constraints.txt          exact package versions;  requirements.txt  what both projects need
 ├── .venv/                   Python environment of both projects (git-ignored)
 ├── global_video_analysis/   match analysis  (football_eval/, scripts/, configs/, docs/, notebooks/, tests/, outputs/, data/)
 └── offside_code/            single-frame offside (offside/, configs/, calibration/, venues/, docs/, notebooks/, tests/)
