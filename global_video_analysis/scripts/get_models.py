@@ -1,30 +1,23 @@
 """Fetch the default detector (YOLOX-S COCO, ONNX, ~36 MB) into ./models.
 
-1. Re-uses the copy from the sibling project ../offside_code/models/yolox.onnx when present.
-2. Otherwise downloads it from the OpenCV Model Zoo (GitHub LFS).
+The model is not in git (too big). setup_env.py runs this at the first start, and every analysis checks it again
+(football_eval/models.py): copied from ../offside_code/models/yolox.onnx when present, else downloaded from the
+OpenCV Model Zoo (GitHub LFS), into a temporary file first, size-checked and compared with the tested checksum.
 
 Better detectors (recommended once you start fine-tuning, see docs/SOTA_REVIEW.md):
     pip install ultralytics
     # then in the config: detection.backend: ultralytics, detection.model_path: yolo11m.pt (COCO)
     # or a football fine-tuned checkpoint with classes {ball, goalkeeper, player, referee}
 """
-import shutil
-import urllib.request
+import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-DST = ROOT / "models" / "yolox.onnx"
-SIBLING = ROOT.parent / "offside_code" / "models" / "yolox.onnx"
-URL = ("https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/"
-       "object_detection_yolox/object_detection_yolox_2022nov.onnx")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from football_eval.models import MODELS, ModelMissing, ensure  # noqa: E402
 
-DST.parent.mkdir(exist_ok=True)
-if DST.exists() and DST.stat().st_size > 1_000_000:
-    print("ok", DST)
-elif SIBLING.exists():
-    shutil.copy(SIBLING, DST)
-    print("copied", SIBLING, "->", DST)
-else:
-    print("download", URL)
-    urllib.request.urlretrieve(URL, DST)
-    print(DST, DST.stat().st_size // 1_000_000, "MB")
+if __name__ == "__main__":
+    try:
+        for name in MODELS:
+            print("ok", ensure(name))
+    except ModelMissing as e:
+        sys.exit(str(e))

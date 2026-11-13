@@ -281,6 +281,8 @@ def build_detector(cfg):
     d = cfg.detection
     d.model_path = resolve_path(d.model_path)
     if d.backend == "yolox_onnx":
+        from .models import resolve_model          # models/*.onnx is not in git: fetched here when missing
+        d.model_path = resolve_model(d.model_path)
         overlap = d.tile - d.tile_stride if (d.tile_stride and d.tile_stride < d.tile) else d.tile_overlap
         return YoloxOnnxDetector(d.model_path, d.conf_player, d.conf_ball, d.tile, overlap,
                                  ignore_regions=cfg.video.ignore_regions, min_box_h_frac=d.min_box_h_frac,

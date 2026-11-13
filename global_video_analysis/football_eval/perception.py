@@ -28,7 +28,7 @@ from .detection import build_detector
 from .people import frame_types, grass_roi, grass_top, people_summary, track_types, zones
 from .pitch import Pitch, build_provider
 from .scoreboard import ScoreboardWatcher
-from .teams import (CODE, CODE_NAME, KitClassifier, TeamClassifier, TrackVotes, apply_manual, person_like,
+from .teams import (CODE, CODE_LABEL, CODE_NAME, CODE_TO_TEAM_CLS, EXTRA_CODES, NOT_PLAYING_ROLES, KitClassifier, TeamClassifier, TrackVotes, apply_manual, person_like,
                     snap_box, vote, vote_roles)
 from .tracking import build_tracker, iou_matrix
 from .video import iter_frames, probe
@@ -129,6 +129,14 @@ def run_perception(video_path: str, cfg: Config, progress: bool = True, max_fram
             if ok:
                 codes[ok] = kit.predict(np.asarray([desc[k] for k in ok]))
                 votes.add(ids[ok], codes[ok])
+            if kit.has_extra:
+                # off the pitch: the zone rule says staff / fan / steward; an "Extra person" clicked in the setup
+                # (coach, fan, police, security) that this person resembles refines the type (police!)
+                off = [k for k in range(len(people)) if desc[k] is not None and ptype[k] is not None]
+                if off:
+                    for k, c in zip(off, kit.predict(np.asarray([desc[k] for k in off]))):
+                        if int(c) in EXTRA_CODES:
+                            ptype[k] = CODE_TO_TEAM_CLS[int(c)][1]
         if seeds:
             _apply_seeds(seeds, f, step, people, ids, tracker, votes, seed_log)
         for k in range(len(people)):
@@ -165,7 +173,7 @@ def run_perception(video_path: str, cfg: Config, progress: bool = True, max_fram
             for k in range(len(balls)):
                 ball_rows.append((f, t, float(balls.conf[k]), *bf[k], *bxy[k], n))
         if live is not None and live.due():
-            labels = [ptype[k] or CODE_NAME.get(votes.label(int(ids[k]), int(codes[k])) if ids[k] >= 0 else int(codes[k]))
+            labels = [ptype[k] or CODE_LABEL.get(votes.label(int(ids[k]), int(codes[k])) if ids[k] >= 0 else int(codes[k]))
                       for k in range(len(people))]
             manual = [int(ids[k]) in votes.manual for k in range(len(people))]
             live.update(n + 1, f, t, img, people, ids, xy, H, provider,
@@ -200,7 +208,8 @@ def run_perception(video_path: str, cfg: Config, progress: bool = True, max_fram
         a = assignment.set_index("track_id")
         tracks["team"] = tracks.track_id.map(a.team).fillna(-1).astype(int)
         role = tracks.track_id.map(a.role)
-        tracks.loc[role.isin(["goalkeeper", "referee"]), "cls"] = role[role.isin(["goalkeeper", "referee"])]
+        special = role.isin(["goalkeeper", "referee", *NOT_PLAYING_ROLES])   # extra people: coach / fan / police / SEC
+        tracks.loc[special, "cls"] = role[special]
         team_report = dict(kit.report, crop_margin_median=float(np.median(margin)), samples=kit_report,
                            tracks_seeded_by_clicks=len(votes.manual))
         print(f"[teams] clicked kits: {int((assignment.decision == 'majority').sum())}/{len(assignment)} tracks by "
@@ -232,6 +241,9 @@ def run_perception(video_path: str, cfg: Config, progress: bool = True, max_fram
     # people off the pitch (fans in the stands, coaches / bench / ball boys, stewards) are not players: per track,
     # the off-pitch type seen in most of its frames (football_eval/people.py)
     tt = track_types(tracks)
+    for tid, code in votes.manual.items():          # a track clicked as an extra person keeps that type
+        if int(code) in EXTRA_CODES:
+            tt.loc[tid] = CODE_TO_TEAM_CLS[int(code)][1]
     off_tr = tracks.track_id.map(tt)
     loose = (tracks.track_id < 0) & tracks.ptype.notna()
     off_tr = off_tr.where(~loose, tracks.ptype)
