@@ -175,6 +175,6 @@ def get_overlay(run_dir: Path) -> RunOverlay:
 
 def _json(p: Path):
     try:
-        return json.loads(p.read_text())
+        return json.loads(p.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None

@@ -1,0 +1,7 @@
+# Line endings per platform: Windows batch files need CRLF (labels / goto break with LF),
+# shell launchers need LF (bash fails on CR). Everything else: git's default for text.
+*.bat      text eol=crlf
+*.cmd      text eol=crlf
+*.command  text eol=lf
+*.sh       text eol=lf
+*.py       text eol=lf

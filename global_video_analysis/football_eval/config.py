@@ -279,7 +279,7 @@ def load_config(path: Optional[str | Path] = None, **overrides) -> Config:
     """Defaults <- YAML file <- keyword overrides (``section={...}``)."""
     cfg = Config()
     if path:
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             _merge(cfg, yaml.safe_load(f) or {})
     _merge(cfg, overrides)
     return cfg

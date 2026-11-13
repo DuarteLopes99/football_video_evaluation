@@ -23,6 +23,14 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Optional
+
+# Windows reads MIME types from the registry, which is often wrong (.js as text/plain) or missing (.mp4):
+# pin the types this server sends so the dashboard and the video player work the same on every OS.
+for _ext, _type in ((".js", "text/javascript"), (".mjs", "text/javascript"), (".css", "text/css"),
+                    (".html", "text/html"), (".json", "application/json"), (".svg", "image/svg+xml"),
+                    (".png", "image/png"), (".jpg", "image/jpeg"), (".mp4", "video/mp4"), (".m4v", "video/mp4"),
+                    (".mov", "video/quicktime"), (".webm", "video/webm"), (".md", "text/markdown")):
+    mimetypes.add_type(_type, _ext)
 from urllib.parse import parse_qs, unquote, urlparse
 
 from ..storage import (VIDEO_EXT, disk_free_gb, find_video, library, list_videos, load_storage, move_video,
@@ -98,7 +106,7 @@ def _q(s: str) -> str:
 
 def _rel(p) -> str:
     try:
-        return str(Path(p).resolve().relative_to(ROOT))
+        return Path(p).resolve().relative_to(ROOT).as_posix()
     except ValueError:
         return str(p)
 
@@ -170,7 +178,7 @@ class Launcher:
     def _setup_for(self, video_name: str) -> Optional[str]:
         for p in sorted((ROOT / "configs").glob("match_setup*.json")):
             try:
-                vp = json.loads(p.read_text()).get("video", {}).get("path")
+                vp = json.loads(p.read_text(encoding="utf-8")).get("video", {}).get("path")
             except (OSError, json.JSONDecodeError):
                 continue
             if vp and Path(vp).name == video_name:
@@ -388,7 +396,7 @@ class Launcher:
             d.mkdir(parents=True, exist_ok=True)
             (d / "launcher_args.json").write_text(json.dumps(
                 {"config": spec["config"], "setup": spec["setup"], "video": _rel(spec["video"]) if spec["video"] else None,
-                 "command": spec["command"], "at": time.strftime("%Y-%m-%d %H:%M")}, indent=1))
+                 "command": spec["command"], "at": time.strftime("%Y-%m-%d %H:%M")}, indent=1), encoding="utf-8")
         return job.summary()
 
     def job_log(self, jid: str, since: int = 0) -> dict:
@@ -470,6 +478,8 @@ class Launcher:
         """Write a double-clickable file on the Desktop that opens the launcher with this recording (and its config /
         setup) already chosen, optionally starting the processing."""
         desk = Path.home() / "Desktop"
+        if not desk.exists() and os.name == "nt":       # Windows with OneDrive backup: the Desktop lives there
+            desk = next((d for d in Path.home().glob("OneDrive*/Desktop") if d.is_dir()), desk)
         if not desk.exists():
             raise FileNotFoundError("no Desktop folder")
         video = self.video_by_id(b["video_id"]) if b.get("video_id") else None
@@ -517,7 +527,7 @@ class Launcher:
         if left:
             tmp.unlink(missing_ok=True)
             raise IOError("upload interrupted")
-        tmp.rename(dst)
+        tmp.replace(dst)                                # replace(): also works on Windows when dst exists
         return dict(ok=True, path=_rel(dst), library=lib["name"])
 
     def archive(self, vid: str, target: Optional[str]) -> dict:
@@ -545,8 +555,11 @@ class Launcher:
                 raise FileNotFoundError(what)
             p = Path(lib["path"])
             p.mkdir(parents=True, exist_ok=True)
-        opener = "open" if sys.platform == "darwin" else ("explorer" if os.name == "nt" else "xdg-open")
-        if shutil.which(opener) or os.name == "nt":
+        if os.name == "nt":
+            os.startfile(str(p))  # noqa: S606 — Windows Explorer
+            return dict(ok=True, path=str(p))
+        opener = "open" if sys.platform == "darwin" else "xdg-open"
+        if shutil.which(opener):
             subprocess.Popen([opener, str(p)])
             return dict(ok=True, path=str(p))
         return dict(ok=False, path=str(p))
@@ -573,7 +586,7 @@ def _vid(path: str) -> str:
 
 def _read_json(p: Path):
     try:
-        return json.loads(p.read_text())
+        return json.loads(p.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
 
@@ -833,15 +846,16 @@ def write_shortcut(folder: Path, name: str, args: list) -> Path:
     import shlex
     safe = re.sub(r"[^A-Za-z0-9 _.()-]+", "_", name).strip() or "Football Video Analysis"
     a = " ".join(shlex.quote(x) for x in args)
-    if os.name == "nt":
+    if os.name == "nt":                               # start.bat: same checks as start.command (venv, GPU build)
         p = folder / f"{safe}.bat"
-        p.write_text(f'@echo off\r\ncd /d "{ROOT.parent}"\r\n".venv\\Scripts\\python.exe" global_video_analysis\\scripts\\launcher.py {a}\r\n')
+        p.write_text(f'@echo off\r\ncd /d "{ROOT.parent}"\r\ncall start.bat {subprocess.list2cmdline(args)}\r\n',
+                     encoding="utf-8")
         return p
     p = folder / (f"{safe}.command" if sys.platform == "darwin" else f"{safe}.sh")
     top = ROOT.parent                                  # football_video_evaluation/ (start.command, .venv)
     p.write_text("#!/bin/bash\n# Opens the football_video_evaluation dashboard" + (f" with: {a}" if a else "") + "\n"
                  f"cd {shlex.quote(str(top))} || {{ echo 'Project folder not found: {top}'; read -r; exit 1; }}\n"
-                 f"exec ./start.command {a}\n")
+                 f"exec ./start.command {a}\n", encoding="utf-8")
     p.chmod(0o755)
     return p
 

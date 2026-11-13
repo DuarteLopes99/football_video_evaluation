@@ -68,7 +68,7 @@ def check_panning_model(fr, tmp):
     except KeyError:
         pass
     assert load_camera_model(path)['cam']['f'] == load_camera_model(path, names[0])['cam']['f']   # default = reference
-    js = json.load(open(path))
+    js = json.load(open(path, encoding="utf-8"))
     assert isinstance(js['frames'], list) and set(js['frame_cameras']) == set(names)
     return path
 
@@ -95,13 +95,13 @@ def check_studio(fr, model_path):
         chk = st.check(name, rels[1])
         print('  check (aux frame):', chk['counts'])
         assert all(n > 40 for n in chk['counts'].values()), chk['counts']
-        cfg = json.loads((vdir / 'venue.json').read_text())
+        cfg = json.loads((vdir / 'venue.json').read_text(encoding="utf-8"))
         assert cfg['camera']['mode'] == 'panning' and cfg['decision_frame']['image'] == rels[0]
         assert [a['image'] for a in cfg['aux_frames']] == [rels[1]]
         # pretend the calibration job ran: the model with this venue's frame names
-        js = json.load(open(model_path))
+        js = json.load(open(model_path, encoding="utf-8"))
         js['frame_cameras'] = {r: js['frame_cameras'][f['name'] + '.png'] for r, f in zip(rels, fr)}
-        (vdir / 'camera_model.json').write_text(json.dumps(js))
+        (vdir / 'camera_model.json').write_text(json.dumps(js), encoding="utf-8")
         v = st.venue(name)
         assert all(x['judgeable'] for x in v['frames']), 'both calibrated frames must be judgeable'
         rp = st.reprojection(name, rels[1])

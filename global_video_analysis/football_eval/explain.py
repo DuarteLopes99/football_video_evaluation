@@ -133,12 +133,12 @@ class Provenance:
         return pd.DataFrame(self.rows, columns=["stage", "item", "value", "source", "quality", "note"])
 
     def save(self, path: str | Path):
-        Path(path).write_text(json.dumps(self.rows, indent=1, default=str))
+        Path(path).write_text(json.dumps(self.rows, indent=1, default=str), encoding="utf-8")
 
     @classmethod
     def load(cls, path: str | Path) -> "Provenance":
         p = Path(path)
-        return cls(json.loads(p.read_text())) if p.exists() else cls()
+        return cls(json.loads(p.read_text(encoding="utf-8"))) if p.exists() else cls()
 
     def html(self) -> str:
         if not self.rows:

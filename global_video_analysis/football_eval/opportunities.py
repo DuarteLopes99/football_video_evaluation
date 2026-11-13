@@ -305,7 +305,7 @@ def save_opportunities(opps: pd.DataFrame, out_dir: str | Path, video_path: Opti
     """``opportunities.csv`` / ``.json`` and ``cut_opportunities.sh`` (ffmpeg, stream copy)."""
     out = Path(out_dir)
     opps.to_csv(out / "opportunities.csv", index=False)
-    with open(out / "opportunities.json", "w") as f:
+    with open(out / "opportunities.json", "w", encoding="utf-8") as f:
         json.dump(json.loads(opps.to_json(orient="records")), f, indent=1, ensure_ascii=False)
     paths = {"csv": out / "opportunities.csv"}
     if video_path:
@@ -317,7 +317,7 @@ def save_opportunities(opps: pd.DataFrame, out_dir: str | Path, video_path: Opti
             lines.append(f'ffmpeg -loglevel error -y -ss {r.clip_start:.1f} -to {r.clip_end:.1f} -i "$VIDEO" '
                          f'-c copy "$D/{r.clip_file}"')
         p = out / "cut_opportunities.sh"
-        p.write_text("\n".join(lines) + "\n")
+        p.write_text("\n".join(lines) + "\n", encoding="utf-8")
         p.chmod(0o755)
         paths["script"] = p
     return paths
@@ -360,14 +360,14 @@ def link_clips_in_report(run_dir: str | Path) -> int:
     rep = run / "report.html"
     if not rep.exists():
         return 0
-    html = rep.read_text()
+    html = rep.read_text(encoding="utf-8")
     n = 0
     for m in set(re.findall(r"<span class='cliplink' data-clip='([^']+)'></span>", html)):
         if (run / "clips" / "opportunities" / m).exists():
             html = html.replace(f"<span class='cliplink' data-clip='{m}'></span>",
                                 f"<a href='clips/opportunities/{m}' target='_blank'>▶ clip</a> · ")
             n += 1
-    rep.write_text(html)
+    rep.write_text(html, encoding="utf-8")
     return n
 
 

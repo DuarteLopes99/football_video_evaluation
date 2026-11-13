@@ -39,7 +39,7 @@ def main():
     opps["flag"] = opps.flag.astype(str).str.lower().isin(["true", "1"])
     video = a.video
     if not video and (run / "meta.json").exists():
-        video = json.loads((run / "meta.json").read_text()).get("video", {}).get("path")
+        video = json.loads((run / "meta.json").read_text(encoding="utf-8")).get("video", {}).get("path")
     video = resolve_path(video) if video else None
     if not video or not Path(video).exists():
         sys.exit("video not found: pass --video (or put the recording in a video library, see configs/storage.yaml)")

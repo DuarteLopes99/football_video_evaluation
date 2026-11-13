@@ -79,7 +79,7 @@ def _upgrade(d: dict) -> dict:
 
 
 def load_setup(path: str | Path) -> dict:
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return _upgrade(json.load(f))
 
 
@@ -94,7 +94,7 @@ def find_setup(video_path: Optional[str], configs_dir: str | Path) -> Optional[P
     hits = []
     for p in Path(configs_dir).glob("match_setup*.json"):
         try:
-            vp = (json.loads(p.read_text()).get("video") or {}).get("path")
+            vp = (json.loads(p.read_text(encoding="utf-8")).get("video") or {}).get("path")
         except (OSError, ValueError):
             continue
         if vp and Path(str(vp)).name == name:
@@ -106,7 +106,7 @@ def save_setup(setup: dict, path: str | Path) -> Path:
     setup["meta"]["updated"] = _now()
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(setup, indent=1, default=_json_default))
+    p.write_text(json.dumps(setup, indent=1, default=_json_default), encoding="utf-8")
     return p
 
 
@@ -262,7 +262,7 @@ def checklist(setup: dict, root: Optional[Path] = None) -> List[dict]:
         if cf_ok:
             msg = f"venue camera {cf}"
             try:
-                cd = json.loads((Path(cf) if Path(cf).exists() else root / cf).read_text())
+                cd = json.loads((Path(cf) if Path(cf).exists() else root / cf).read_text(encoding="utf-8"))
                 dl, dw = cd.get("pitch_length"), cd.get("pitch_width")
                 if dl and src == "manual" and (abs(dl - pc["length"]) > 1.0 or abs(dw - pc["width"]) > 1.0):
                     add("calibration", "warn", f"{msg} was solved for a {dl:.1f} x {dw:.1f} pitch, setup says "

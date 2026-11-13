@@ -49,9 +49,9 @@ def main():
             sys.exit("review needs --run outputs/<match>")
         meta = Path(a.run) / "meta.json"
         if not video and meta.exists():
-            video = json.loads(meta.read_text()).get("video", {}).get("path")
+            video = json.loads(meta.read_text(encoding="utf-8")).get("video", {}).get("path")
         if not video and Path(a.setup).exists():
-            video = json.loads(Path(a.setup).read_text()).get("video", {}).get("path")
+            video = json.loads(Path(a.setup).read_text(encoding="utf-8")).get("video", {}).get("path")
     if not video:
         sys.exit("give --video")
     video = resolve_path(video)

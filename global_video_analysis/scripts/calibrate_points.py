@@ -86,13 +86,13 @@ def main():
     entry = {"points": {k: [round(v[0], 1), round(v[1], 1)] for k, v in pts.items()}, "t": a.t,
              "frame_size": [img.shape[1], img.shape[0]]}
     out = Path(a.out)
-    data = json.loads(out.read_text()) if out.exists() else {}
+    data = json.loads(out.read_text(encoding="utf-8")) if out.exists() else {}
     if a.anchor:
         data.setdefault("anchors", {})[str(int(round(a.t * info.fps)))] = entry
     else:
         data.update(entry)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(data, indent=2))
+    out.write_text(json.dumps(data, indent=2), encoding="utf-8")
     # overlay for checking
     for ln in pitch.lines():
         cv2.polylines(img, [H.to_image(ln).astype(np.int32)], False, (255, 0, 255), 2)

@@ -276,7 +276,7 @@ class App:
         from ..review import RunGeometry, candidate_events, load_review, sample_check_frames
         d = self.run_dir
         self.review = load_review(d / "review.json")
-        meta = json.loads((d / "meta.json").read_text()) if (d / "meta.json").exists() else {}
+        meta = json.loads((d / "meta.json").read_text(encoding="utf-8")) if (d / "meta.json").exists() else {}
         rc = meta.get("config", {})
         # the run's own pitch / camera settings drive the overlay
         for sec in ("pitch", "video", "teams"):
@@ -293,7 +293,7 @@ class App:
         auto = ev[~ev.source.isin(["manual", "match_sheet"])] if ev is not None and "source" in ev else ev
         self.candidates = candidate_events(auto)
         ctxp = d / "match_context.json"
-        self.team_names = json.loads(ctxp.read_text()).get("team_names") if ctxp.exists() else \
+        self.team_names = json.loads(ctxp.read_text(encoding="utf-8")).get("team_names") if ctxp.exists() else \
             [t["name"] for t in self.setup["teams"]]
 
     def geometry(self, frame: int) -> dict:
@@ -361,7 +361,7 @@ def _refine_pose(cam, ev, X, uv, p0):
 
 def _rel(p: str) -> str:
     try:
-        return str(Path(p).resolve().relative_to(ROOT))
+        return Path(p).resolve().relative_to(ROOT).as_posix()
     except ValueError:
         return str(p)
 

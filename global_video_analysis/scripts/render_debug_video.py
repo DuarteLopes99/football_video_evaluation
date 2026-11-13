@@ -52,7 +52,7 @@ def main():
     a.video = _rp(a.video) if getattr(a, "video", None) else a.video   # also finds it in the video libraries
     d = Path(a.tracks)
     import json
-    meta = json.loads((d / "meta.json").read_text()) if (d / "meta.json").exists() else {}
+    meta = json.loads((d / "meta.json").read_text(encoding="utf-8")) if (d / "meta.json").exists() else {}
     cfg = load_config(a.config)
     if a.config is None and meta.get("config"):          # same pitch / camera / fps as the run itself
         from football_eval.config import _merge
@@ -62,7 +62,7 @@ def main():
             print(f"[warn] {e}: using --config / defaults for that key")
     names = ["Team A", "Team B"]
     if (d / "match_context.json").exists():
-        names = json.loads((d / "match_context.json").read_text()).get("team_names") or names
+        names = json.loads((d / "match_context.json").read_text(encoding="utf-8")).get("team_names") or names
     elif cfg.teams.team_names:
         names = list(cfg.teams.team_names)
     pitch = Pitch(cfg.pitch.length, cfg.pitch.width)

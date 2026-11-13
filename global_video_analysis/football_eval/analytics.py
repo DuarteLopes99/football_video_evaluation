@@ -165,7 +165,7 @@ def save_analytics(res: dict, out_dir: str, make_report: bool = True, video_path
     if res.get("key_metrics") is not None and len(res["key_metrics"]):
         res["key_metrics"].to_csv(out / "key_metrics.csv", index=False)
     if res.get("data_quality") is not None:
-        with open(out / "data_quality.json", "w") as f:
+        with open(out / "data_quality.json", "w", encoding="utf-8") as f:
             clean = lambda v: None if isinstance(v, float) and np.isnan(v) else (v.item() if hasattr(v, "item") else v)
             json.dump({k: clean(v) for k, v in res["data_quality"].items()}, f, indent=1, default=str)
     res["player_stats"].to_csv(out / "player_stats.csv")
@@ -173,10 +173,10 @@ def save_analytics(res: dict, out_dir: str, make_report: bool = True, video_path
         res["player_numbers"].to_csv(out / "player_stats_by_number.csv", index=False)
     res["timeline"].to_csv(out / "timeline.csv", index=False)
     res["stoppages"].to_csv(out / "stoppages.csv", index=False)
-    with open(out / "timeline.json", "w") as f:
+    with open(out / "timeline.json", "w", encoding="utf-8") as f:
         json.dump(res["timeline"].to_dict(orient="records"), f, indent=2, default=str)
     ctx = res["ctx"]
-    with open(out / "match_context.json", "w") as f:
+    with open(out / "match_context.json", "w", encoding="utf-8") as f:
         json.dump({"periods": ctx.periods, "attacks_right": [{str(k): v for k, v in d.items()} for d in ctx.attacks_right],
                    "team_names": ctx.team_names}, f, indent=2)
     if res.get("provenance") is not None:

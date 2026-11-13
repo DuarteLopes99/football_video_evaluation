@@ -26,7 +26,7 @@ from .tracking import iou_matrix
 
 
 def load_annotation(path: str) -> dict:
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return json.load(f)
 
 

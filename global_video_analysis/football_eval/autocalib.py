@@ -91,7 +91,7 @@ def venue_cameras(root: Path, width: int, height: int, exclude=()) -> list:
         if p.resolve() in {Path(e).resolve() for e in exclude}:
             continue
         try:
-            d = json.loads(p.read_text())
+            d = json.loads(p.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
         if d.get("type") == "ptz" and abs(d.get("width", 640) / d.get("height", 360) - width / height) < 0.01:

@@ -192,7 +192,7 @@ def save_camera_model(path, result, frame_size, extra=None):
                                 draws=[_cam_to_json(d) for d in result['draws_by_frame'][n]])
                         for n in result['draws_by_frame']}
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    with open(path, 'w') as fh:
+    with open(path, 'w', encoding="utf-8") as fh:
         json.dump(js, fh, indent=1, default=float)
     return path
 
@@ -200,7 +200,7 @@ def save_camera_model(path, result, frame_size, extra=None):
 def load_camera_model(path, frame=None):
     """frame: for a panning-camera model, the calibrated frame (its image path as in the config) whose camera is
     wanted; None = the reference frame. A stationary-camera model has one camera for every frame."""
-    js = json.load(open(path))
+    js = json.load(open(path, encoding="utf-8"))
     src = js
     fc = js.get('frame_cameras') or {}
     if frame is not None and fc:

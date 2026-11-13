@@ -160,7 +160,7 @@ def load_calibration(path: str, pitch: Pitch) -> Homography:
     2. The camera model saved by the sibling ``offside_code`` project
        (``{"camera": {f, rvec, C, cx, cy}, "half_length", "half_width"}``, origin at the centre spot).
     """
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         return calibration_from_dict(json.load(f), pitch)
 
 
@@ -337,7 +337,7 @@ def build_provider(cfg, pitch: Pitch, fps: float) -> Optional[HomographyProvider
             for k, pts in pc.flow_anchor_points.items():
                 anchors[int(k)] = calibration_from_dict({"points": pts}, pitch)
         elif pc.calibration_file:
-            with open(pc.calibration_file) as f:
+            with open(pc.calibration_file, encoding="utf-8") as f:
                 d = json.load(f)
             # {"anchors": {"<frame_idx>": {"points": {...}}}} or a single calibration for frame 0
             for k, v in (d.get("anchors") or {"0": d}).items():

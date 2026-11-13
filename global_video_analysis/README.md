@@ -139,7 +139,7 @@ What was evaluated and made manual (details and numbers in `docs/MANUAL_VALIDATI
 
 ```bash
 cd football_video_evaluation                 # the umbrella folder: .venv is shared with ../offside_code
-python3 -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate   # Windows: py -3 -m venv .venv && .venv\Scripts\activate
 pip install -r global_video_analysis/requirements.txt -r offside_code/requirements.txt
 cd global_video_analysis
 python scripts/get_models.py                 # YOLOX detector (copied from ../offside_code if present)

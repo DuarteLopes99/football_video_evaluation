@@ -14,7 +14,7 @@ ap.add_argument('--repeat', type=int, default=3)
 ap.add_argument('--tile', type=int, default=None)
 ap.add_argument('--stride', type=int, default=None)
 a = ap.parse_args()
-cfg = json.load(open(os.path.join(ROOT, a.config)))
+cfg = json.load(open(os.path.join(ROOT, a.config), encoding="utf-8"))
 if a.tile:
     cfg.setdefault('detector', {}).update(tile=a.tile, stride=a.stride or int(a.tile * 0.85))
 cam_path = os.path.join(ROOT, a.camera or cfg['camera']['camera_model'])

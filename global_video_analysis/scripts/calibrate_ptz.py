@@ -62,11 +62,11 @@ def click_landmarks(video, t, path):
             break
     cv2.destroyAllWindows()
     p = Path(path)
-    d = json.loads(p.read_text()) if p.exists() else {"frames": []}
+    d = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {"frames": []}
     d["frames"] = [f for f in d["frames"] if abs(f["t"] - t) > 0.5] + [{"t": t, "points": {k: [round(a, 1), round(b, 1)] for k, (a, b) in pts.items()}}]
     d["frames"].sort(key=lambda f: f["t"])
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(d, indent=2))
+    p.write_text(json.dumps(d, indent=2), encoding="utf-8")
     print(f"{len(pts)} landmarks at t={t}s -> {p}")
 
 
@@ -139,7 +139,7 @@ def main():
     else:
         if not a.landmarks:
             sys.exit("give --landmarks or --setup")
-        L = json.loads(Path(a.landmarks).read_text())["frames"]
+        L = json.loads(Path(a.landmarks).read_text(encoding="utf-8"))["frames"]
     if not L:
         sys.exit("no landmark frame with >= 2 points")
     L = sorted(L, key=lambda f: -len(f["points"]))          # the richest frame starts the fit

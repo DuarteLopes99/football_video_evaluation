@@ -45,7 +45,7 @@ def load_review(path: str | Path) -> dict:
     p = Path(path)
     if not p.exists():
         return new_review(str(p.parent))
-    d = json.loads(p.read_text())
+    d = json.loads(p.read_text(encoding="utf-8"))
     base = new_review(d.get("run", str(p.parent)))
     base.update(d)
     return base
@@ -54,7 +54,7 @@ def load_review(path: str | Path) -> dict:
 def save_review(review: dict, path: str | Path) -> Path:
     review.setdefault("meta", {})["updated"] = _now()
     p = Path(path)
-    p.write_text(json.dumps(review, indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o)))
+    p.write_text(json.dumps(review, indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o)), encoding="utf-8")
     return p
 
 
@@ -453,7 +453,7 @@ class RunGeometry:
         self.frames = pd.read_csv(d / "frames.csv") if (d / "frames.csv").exists() else None
         self.cam_log = pd.read_csv(d / "camera_log.csv") if (d / "camera_log.csv").exists() else None
         self.cfg = cfg
-        meta = json.loads((d / "meta.json").read_text()).get("video", {}) if (d / "meta.json").exists() else {}
+        meta = json.loads((d / "meta.json").read_text(encoding="utf-8")).get("video", {}) if (d / "meta.json").exists() else {}
         self.size = (int(meta.get("width") or 4000), int(meta.get("height") or 4000))
         self.pitch = Pitch(cfg.pitch.length, cfg.pitch.width)
         self.cam, self.H = None, None

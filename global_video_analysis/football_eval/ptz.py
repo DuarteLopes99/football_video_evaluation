@@ -939,10 +939,10 @@ def save_ptz(path: str, cam: PTZCamera, anchors: Optional[dict] = None, meta: Op
         d["anchors"] = {str(k): list(map(float, v)) for k, v in anchors.items()}
     if meta:
         d["meta"] = meta
-    Path(path).write_text(json.dumps(d, indent=2))
+    Path(path).write_text(json.dumps(d, indent=2), encoding="utf-8")
 
 
 def load_ptz(path: str, pitch: Pitch = None):
-    d = json.loads(Path(path).read_text())
+    d = json.loads(Path(path).read_text(encoding="utf-8"))
     cam = PTZCamera.from_json(d, pitch)
     return cam, {int(k): np.array(v) for k, v in d.get("anchors", {}).items()}

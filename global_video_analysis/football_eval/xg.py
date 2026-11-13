@@ -81,7 +81,7 @@ class XGModel:
 
     @classmethod
     def load(cls, path: str | Path) -> "XGModel":
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             return cls(json.load(f))
 
     def predict(self, rows: Sequence[dict], variant: str = "full", situation: Sequence[str] = None) -> np.ndarray:

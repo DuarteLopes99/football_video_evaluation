@@ -28,7 +28,7 @@ ap.add_argument('--recalibrate', action='store_true')
 a = ap.parse_args()
 root = os.path.dirname(os.path.abspath(__file__))
 cfg_path = a.config if os.path.isabs(a.config) else os.path.join(root, a.config)
-cfg = json.load(open(cfg_path))
+cfg = json.load(open(cfg_path, encoding="utf-8"))
 cam_cfg = cfg.get('camera', {})
 model = os.path.join(root, cam_cfg.get('camera_model', 'calibration/camera_model.json'))
 if a.recalibrate or not os.path.exists(model):
@@ -66,4 +66,4 @@ for sc, why in out['skipped'].items():
 print('ball:', out['ball_source'], out['ball_pixel'])
 print('timings (s):', out['timings'])
 json.dump(dict(decisions=out['decisions'], summary=out['summary'], timings=out['timings']),
-          open(os.path.join(out_dir, 'offside_result.json'), 'w'), indent=1, default=float)
+          open(os.path.join(out_dir, 'offside_result.json'), 'w', encoding="utf-8"), indent=1, default=float)

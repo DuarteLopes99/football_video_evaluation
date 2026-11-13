@@ -3,6 +3,7 @@
 They use the synthetic match generator, so they need no video and run in ~1 minute.
 Thresholds are deliberately below the current scores so that only real regressions fail.
 """
+import os
 import sys
 from pathlib import Path
 
@@ -287,7 +288,7 @@ def test_storage_and_launcher_commands():
         (lib / "season" / "2026-01-01_A_vs_B.mp4").write_bytes(b"0" * 10)
         (lib / ".2026-01-02_C_vs_D.mp4.icloud").write_bytes(b"0")          # evicted iCloud placeholder
         st_file = Path(d) / "storage.yaml"
-        st_file.write_text(f"libraries:\n  - name: Test\n    path: {lib}\narchive: null\n")
+        st_file.write_text(f"libraries:\n  - name: Test\n    path: {lib}\narchive: null\n", encoding="utf-8")
         st = storage.load_storage(st_file)
         vids = storage.list_videos(st, include_legacy=False)
         names = {v["name"]: v for v in vids}
@@ -300,8 +301,11 @@ def test_storage_and_launcher_commands():
     from football_eval.ui.launcher import preselect_url, write_shortcut
     with tempfile.TemporaryDirectory() as d:
         p = write_shortcut(Path(d), "Analyse my match", ["--video", "a b.mp4", "--start"])
-        txt = p.read_text()
-        assert "start.command --video 'a b.mp4' --start" in txt and p.stat().st_mode & 0o100
+        txt = p.read_text(encoding="utf-8")
+        if os.name == "nt":
+            assert p.suffix == ".bat" and 'call start.bat --video "a b.mp4" --start' in txt
+        else:
+            assert "start.command --video 'a b.mp4' --start" in txt and p.stat().st_mode & 0o100
     assert preselect_url("http://x/", {"video_id": "ab", "start": True, "setup": None}) == "http://x/?video_id=ab&start=True"
     assert "Step 1" in Launcher("python").doc("USER_GUIDE")["markdown"]
 
@@ -324,7 +328,7 @@ def test_live_preview_and_match_screen_data():
         H = Homography(np.array([[5.0, 0, 50], [0, 4.0, 40], [0, 0, 1]]))
         lp.update(3, 30, 1.0, img, people, np.array([7]), np.array([[10.0, 20.0]]), H, None, [(300, 200)],
                   labels=["team0"], manual=[True], tiles=[(0, 0, 640, 360)])
-        st = _json.loads((Path(d) / "live" / "state.json").read_text())
+        st = _json.loads((Path(d) / "live" / "state.json").read_text(encoding="utf-8"))
         assert (Path(d) / "live" / "latest.jpg").stat().st_size > 1000
         assert st["n"] == 3 and st["progress"] == 0.3 and st["n_people"] == 1
         assert st["labelled"]["team0"] == 1 and st["clicked_tracks_in_view"] == 1 and st["n_tiles"] == 1

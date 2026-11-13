@@ -112,7 +112,7 @@ def run(cfg, base_dir='.', verbose=True, detector=None):
                                **({k: v for k, v in res[q['id']].items() if k in ('xmin', 'xmax', 'y')}
                                   if q['id'] in res else {})) for q in players},
         scenarios=summary, files=files, seconds=round(time.time() - t0, 1))
-    with open(os.path.join(out_dir, 'offside_result.json'), 'w') as fh:
+    with open(os.path.join(out_dir, 'offside_result.json'), 'w', encoding="utf-8") as fh:
         json.dump(result, fh, indent=1, default=lambda v: float(v) if np.isscalar(v) else str(v))
     log(f'[done] {len(files)} images in {out_dir} ({result["seconds"]} s)')
     return dict(result=result, calib=calib, players=players, res=res, ball=ball, frames=frames, image=img)

@@ -340,5 +340,5 @@ details{{margin:10px 0}}summary{{cursor:pointer;padding:6px 0}}
 {trust}<p class="note">Definitions of every statistic: docs/STATS_RULEBOOK.md · confidence grading: docs/REPORT_GUIDE.md ·
 manual inputs and review: docs/MANUAL_VALIDATION.md.</p></body></html>"""
     p = Path(out_dir) / "report.html"
-    p.write_text(html)
+    p.write_text(html, encoding="utf-8")
     return p

@@ -29,6 +29,24 @@ From a terminal with the venv active, each project also runs on its own:
 `python global_video_analysis/scripts/launcher.py`, `python offside_code/offside_studio.py`, and all the CLIs
 described in the two READMEs (run them from inside their folder).
 
+## Windows
+
+Supported the same way as macOS / Linux. Install Python 3.10+ from python.org (tick *Add python.exe to PATH*), then
+double-click **`start.bat`**: it creates `.venv\`, installs the packages, switches to the GPU build on an NVIDIA
+computer and opens the dashboard. Optional: [ffmpeg](https://www.gyan.dev/ffmpeg/builds/) on the PATH cuts the
+opportunity clips faster (without it OpenCV re-encodes them). Notes:
+
+* everything is read and written as UTF-8 (`start.bat` also sets `PYTHONUTF8=1`), so setups, reports and logs made
+  on the Mac open unchanged on Windows and back; relative paths in the setups always use `/`;
+* the PC is kept awake while a match is processed (like `caffeinate` on the Mac);
+* *Desktop shortcut* writes a `.bat` (also into a OneDrive Desktop) that goes through `start.bat`;
+* `cut_highlights.sh` / `cut_opportunities.sh` in the outputs are bash scripts; on Windows use
+  `python scripts/cut_opportunities.py --run outputs/<match>` or the *Cut clips* button instead;
+* video libraries in `configs/storage.yaml` that point to Mac folders are skipped; add the Windows folders there
+  (recordings are also found by file name, so a setup made on the Mac finds its video on the PC).
+
+From a terminal: `.venv\Scripts\activate`, then the same commands as below with `python`.
+
 ## GPU (automatic)
 
 The analysis runs on any laptop's CPU and uses a GPU by itself when the computer has one: the person / ball detector

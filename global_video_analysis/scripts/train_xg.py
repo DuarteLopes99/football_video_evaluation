@@ -47,14 +47,14 @@ def extract(sb_dir: str | None, use_statsbombpy: bool, out: Path):
     else:
         base = Path(sb_dir) / "data"
         for comp, season in COMPETITIONS:
-            for m in json.load(open(base / "matches" / str(comp) / f"{season}.json")):
+            for m in json.load(open(base / "matches" / str(comp) / f"{season}.json", encoding="utf-8")):
                 p = base / "events" / f"{m['match_id']}.json"
                 if not p.exists():
                     continue
-                for e in json.load(open(p)):
+                for e in json.load(open(p, encoding="utf-8")):
                     if e["type"]["name"] == "Shot":
                         rows.append(_row(m["match_id"], e["location"], e["shot"], e.get("play_pattern", {}).get("name")))
-    with open(out, "w") as f:
+    with open(out, "w", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r) + "\n")
     print(f"{len(rows)} shots -> {out}")
@@ -69,7 +69,7 @@ def _row(mid, loc, s, play=None):
 
 def build_table(shots_path: Path) -> pd.DataFrame:
     recs = []
-    for line in open(shots_path):
+    for line in open(shots_path, encoding="utf-8"):
         s = json.loads(line)
         x, y = sb_to_m(s["loc"])
         ff = None
@@ -132,7 +132,7 @@ def main():
               "dfk_factor": float(fks.goal.mean() / max(predict(fit_lr(op, BASIC), fks).mean(), 1e-6)) if len(fks) else 1.0,
               "training": {"source": "StatsBomb open data", "competitions": COMPETITIONS, "report": report}}
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
-    with open(a.out, "w") as f:
+    with open(a.out, "w", encoding="utf-8") as f:
         json.dump(params, f, indent=2)
     print(json.dumps(report, indent=2))
     print("->", a.out)

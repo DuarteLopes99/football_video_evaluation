@@ -30,7 +30,18 @@ from football_eval.perception import load_perception, run_perception, save_perce
 from football_eval.review import load_review  # noqa: E402
 
 
+def _keep_awake():
+    """Windows: no system sleep while this process runs (macOS: the launcher runs it under caffeinate)."""
+    if sys.platform == "win32":
+        try:
+            import ctypes
+            ctypes.windll.kernel32.SetThreadExecutionState(0x80000000 | 0x00000001)  # ES_CONTINUOUS | ES_SYSTEM_REQUIRED
+        except Exception:  # noqa: BLE001 — informative only
+            pass
+
+
 def main():
+    _keep_awake()
     ap = argparse.ArgumentParser(description="Single-camera football match analysis")
     src = ap.add_mutually_exclusive_group(required=True)
     src.add_argument("--video", help="match video (mp4)")
@@ -116,7 +127,7 @@ def main():
             rp0 = Path(a.review) if a.review else Path(a.tracks) / "review.json"
             rv0 = load_review(rp0)
             pending = [r for r in rv0.get("repairs", []) if not r.get("applied")]
-            meta0 = json.loads((Path(a.tracks) / "meta.json").read_text())
+            meta0 = json.loads((Path(a.tracks) / "meta.json").read_text(encoding="utf-8"))
             vid = meta0.get("video", {}).get("path")
             from football_eval.config import resolve_path
             if vid and not Path(str(vid)).exists():
@@ -185,9 +196,9 @@ def main():
         print("\nEvent detection vs ground truth:\n", ev.round(3).to_string())
     print(f"\nOutputs in {out}  (report: {rep})")
     if (out / "live" / "state.json").exists():                  # tell the launcher's live screen we are done
-        st = json.loads((out / "live" / "state.json").read_text() or "{}")
+        st = json.loads((out / "live" / "state.json").read_text(encoding="utf-8") or "{}")
         st.update(status="done", progress=1.0)
-        (out / "live" / "state.json").write_text(json.dumps(st))
+        (out / "live" / "state.json").write_text(json.dumps(st), encoding="utf-8")
     if not a.synthetic and review is None:
         print(f"Next: check the key events and a few frames ->  python scripts/match_ui.py review --run {out}"
               + (f" --setup {a.setup}" if a.setup else ""))
@@ -195,7 +206,7 @@ def main():
 
 def _video_of_run(run_dir: str):
     try:
-        return json.loads((Path(run_dir) / "meta.json").read_text()).get("video", {}).get("path")
+        return json.loads((Path(run_dir) / "meta.json").read_text(encoding="utf-8")).get("video", {}).get("path")
     except (OSError, ValueError):
         return None
 

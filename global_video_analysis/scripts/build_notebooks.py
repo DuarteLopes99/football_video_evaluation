@@ -116,7 +116,7 @@ print(f"{off.sum()} detections are outside the pitch (bench / staff / crowd) and
         "ball": [round(float(v), 1) for v in balls.foot[0]] if len(balls) else None,
         "landmarks": {"centre": [0, 0], "halfway_top": [0, 0], "circle_top": [0, 0], "circle_bottom": [0, 0]}}
 out = ROOT / "data/annotations/template_from_detections.json"; out.parent.mkdir(parents=True, exist_ok=True)
-out.write_text(json.dumps(tmpl, indent=1)); print("annotation template ->", out.relative_to(ROOT))
+out.write_text(json.dumps(tmpl, indent=1), encoding="utf-8"); print("annotation template ->", out.relative_to(ROOT))
 
 if ANNOTATION:
     ann = load_annotation(ANNOTATION)
@@ -553,7 +553,7 @@ Automatic player identity needs higher resolution (720p+) + jersey OCR + trackle
 27 were too blurred / shaded to tell). Descriptors are recomputed from the video for every 5th analysed frame
 (same as the perception), then the methods are compared: the stored labels (unsupervised + typed BGR kit colours),
 pure unsupervised clustering, and the seeded classifier with the clicked samples of `match_setup_canedo_J2.json`."""),
-("code", r"""L = json.load(open(ROOT / "data/annotations/canedo_segment_team_labels.json"))["labels"]
+("code", r"""L = json.load(open(ROOT / "data/annotations/canedo_segment_team_labels.json", encoding="utf-8"))["labels"]
 truth = {int(k): v for k, v in L.items()}
 def score(team, role=None):
     out = {}
@@ -995,7 +995,7 @@ def main():
         if a.execute:
             print("executing", name, file=sys.stderr)
             nb = execute(nb, NB_DIR)
-        (NB_DIR / name).write_text(json.dumps(nb, indent=1))
+        (NB_DIR / name).write_text(json.dumps(nb, indent=1), encoding="utf-8")
         print("->", NB_DIR / name)
 
 

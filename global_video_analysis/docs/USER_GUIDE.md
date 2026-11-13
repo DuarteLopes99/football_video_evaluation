@@ -10,6 +10,7 @@ This guide is for using the system day to day. Technical details are in the READ
 | Double-click **Football Video Analysis** on the Desktop | normal use: opens the launcher in the browser |
 | Double-click a **match shortcut** on the Desktop (made with *Desktop shortcut* in the Analyse tab) | opens the launcher with that recording, config and setup already chosen |
 | `./start.command` in `football_video_evaluation/` | the same, from a terminal (`python scripts/launcher.py` inside `global_video_analysis/` with the venv active also works) |
+| **Windows:** double-click `start.bat` in `football_video_evaluation\` | the same on a PC (Python 3.10+ from python.org needed once); *Desktop shortcut* makes `.bat` files |
 | `python scripts/launcher.py --video <file> --start` | starts processing that recording right away (see §7) |
 
 The first start creates the Python environment, which takes a few minutes once. A Terminal window stays open
@@ -98,8 +99,8 @@ Sections filled in by the assistant show **Pre-filled, not yet confirmed**. Chec
     darkens that strip.
   
   If the lines drift for a long time, note the minute. You fix it in the review (*Camera repair*).
-* The Mac must stay awake. The launcher asks macOS not to sleep while a job runs, but keep the lid open and the
-  charger connected.
+* The computer must stay awake. The launcher asks macOS (and Windows) not to sleep while a job runs, but keep the
+  lid open and the charger connected.
 * At the end, the report is written and the clips of the flagged opportunities are cut.
 * **Replay** (Match screen → *Replay (analysed)*) draws the same colours and tags as the live view (team short name,
   GK, REF, STAFF, SEC, FAN). The banner *ATTACK NEAR GOAL · team* stays on for the whole phase; *Key events* lists

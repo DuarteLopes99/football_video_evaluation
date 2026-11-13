@@ -497,7 +497,7 @@ def save_perception(res: dict, out_dir: str):
     for k in ("tracks", "ball", "ball_raw", "frames", "camera_log", "team_assignment"):
         if k in res:
             res[k].to_csv(out / f"{k}.csv", index=False)
-    with open(out / "meta.json", "w") as f:
+    with open(out / "meta.json", "w", encoding="utf-8") as f:
         json.dump(res["meta"], f, indent=2, default=str)
 
 
@@ -506,7 +506,7 @@ def load_perception(out_dir: str) -> dict:
     res = {k: pd.read_csv(out / f"{k}.csv") for k in ("tracks", "ball", "frames", "camera_log", "team_assignment")
            if (out / f"{k}.csv").exists()}
     if (out / "meta.json").exists():
-        res["meta"] = json.load(open(out / "meta.json"))
+        res["meta"] = json.load(open(out / "meta.json", encoding="utf-8"))
     return res
 
 
@@ -527,7 +527,7 @@ def repair_run(video_path: str, cfg: Config, run_dir: str, repairs: list, progre
     ball_raw = pd.read_csv(d / "ball_raw.csv")
     cam_log = pd.read_csv(d / "camera_log.csv") if (d / "camera_log.csv").exists() else None
     ta = pd.read_csv(d / "team_assignment.csv") if (d / "team_assignment.csv").exists() else None
-    meta = json.loads((d / "meta.json").read_text()) if (d / "meta.json").exists() else {}
+    meta = json.loads((d / "meta.json").read_text(encoding="utf-8")) if (d / "meta.json").exists() else {}
     if cfg.pitch.homography != "ptz" or cam_log is None:
         raise ValueError("camera repair needs a PTZ run (pitch.homography: ptz) with camera_log.csv")
     info = probe(video_path)

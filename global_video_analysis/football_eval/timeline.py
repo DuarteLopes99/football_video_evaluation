@@ -88,6 +88,6 @@ def export_highlights_script(tl: pd.DataFrame, video_path: str, out_dir: str, ma
         lines.append(f'ffmpeg -loglevel error -y -ss {r.clip_start:.1f} -to {r.clip_end:.1f} -i "$VIDEO" -c copy '
                      f'"$(dirname "$0")/clips/{name}"')
     p = out / "cut_highlights.sh"
-    p.write_text("\n".join(lines) + "\n")
+    p.write_text("\n".join(lines) + "\n", encoding="utf-8")
     p.chmod(0o755)
     return p

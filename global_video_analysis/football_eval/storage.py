@@ -36,7 +36,7 @@ def load_storage(path: Optional[str | Path] = None) -> dict:
     p = Path(path) if path else STORAGE_FILE
     st = DEFAULT
     if p.exists():
-        st = yaml.safe_load(p.read_text()) or DEFAULT
+        st = yaml.safe_load(p.read_text(encoding="utf-8")) or DEFAULT
     libs = []
     for i, lib in enumerate(st.get("libraries") or DEFAULT["libraries"]):
         if isinstance(lib, str):
@@ -89,7 +89,7 @@ def list_videos(st: Optional[dict] = None, include_legacy: bool = True) -> list:
             seen.add(key)
             s = p.stat()
             out.append(dict(id=video_id(real), name=real.name, path=str(real), library=name,
-                            rel=str(real.relative_to(root)), size_mb=round(s.st_size / 1e6, 1) if target is None else None,
+                            rel=real.relative_to(root).as_posix(), size_mb=round(s.st_size / 1e6, 1) if target is None else None,
                             mtime=s.st_mtime, cloud_only=bool(target is not None or _cloud_only(p))))
     out.sort(key=lambda v: (-v["mtime"], v["name"]))
     return out

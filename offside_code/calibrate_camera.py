@@ -40,7 +40,7 @@ def main():
     ap.add_argument('--out', help='camera model path (default: config camera.camera_model)')
     a = ap.parse_args()
     root = os.path.dirname(os.path.abspath(__file__))
-    cfg = json.load(open(a.config if os.path.isabs(a.config) else os.path.join(root, a.config)))
+    cfg = json.load(open(a.config if os.path.isabs(a.config) else os.path.join(root, a.config), encoding="utf-8"))
     cam_cfg = cfg.get('camera', {})
     mode = camera_mode(cfg)
     n_draws = a.draws or cam_cfg.get('n_draws', 150)

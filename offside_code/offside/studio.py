@@ -46,6 +46,14 @@ import numpy as np
 from .camera import project
 from .template import circle_elements, line_elements, point_elements, polyline
 
+# Windows reads MIME types from the registry, which is often wrong (.js as text/plain) or missing (.mp4):
+# pin the types this server sends so the dashboard and the video player work the same on every OS.
+for _ext, _type in ((".js", "text/javascript"), (".mjs", "text/javascript"), (".css", "text/css"),
+                    (".html", "text/html"), (".json", "application/json"), (".svg", "image/svg+xml"),
+                    (".png", "image/png"), (".jpg", "image/jpeg"), (".mp4", "video/mp4"), (".m4v", "video/mp4"),
+                    (".mov", "video/quicktime"), (".webm", "video/webm"), (".md", "text/markdown")):
+    mimetypes.add_type(_type, _ext)
+
 ROOT = Path(__file__).resolve().parents[1]          # offside_code/
 VENUES = ROOT / "venues"
 HTML = Path(__file__).resolve().parent / "ui" / "studio.html"

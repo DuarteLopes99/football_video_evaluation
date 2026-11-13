@@ -61,7 +61,7 @@ print(os.listdir(os.path.join(ROOT, 'models')))
 
 md('## 1. Decision frame and configuration')
 code('''
-cfg = json.load(open(os.path.join(ROOT, 'configs', 'anadia_example.json')))
+cfg = json.load(open(os.path.join(ROOT, 'configs', 'anadia_example.json'), encoding="utf-8"))
 dfc = cfg['decision_frame']
 img = cv2.imread(os.path.join(ROOT, dfc['image']))
 print(img.shape)
@@ -241,5 +241,5 @@ and `tests/test_multiframe_synthetic.py`. Not needed for this match (single stat
 nb = dict(cells=cells, metadata=dict(kernelspec=dict(display_name='Python 3', language='python', name='python3'),
                                      language_info=dict(name='python')), nbformat=4, nbformat_minor=5)
 dst = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'notebooks', 'offside_demo.ipynb')
-json.dump(nb, open(dst, 'w'), indent=1)
+json.dump(nb, open(dst, 'w', encoding="utf-8"), indent=1)
 print('wrote', os.path.normpath(dst), len(cells), 'cells')
