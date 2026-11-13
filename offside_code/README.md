@@ -18,6 +18,14 @@ metrics. Step by step: [`docs/STUDIO_GUIDE.md`](docs/STUDIO_GUIDE.md). Venues ma
 |---|---|---|
 | ![](outputs/offside_AFC_attacks_right.png) | ![](outputs/offside_AFC_attacks_left.png) | ![](outputs/birds_eye.png) |
 
+In the dashboard (*Offside* tab): calibration by clicking the painted lines, then the decision on a handheld-phone
+frame (Cerqueira vs Macieira, panning camera) with its bird's-eye reconstruction.
+
+| Calibrate | Decide |
+|---|---|
+| ![](../docs/images/dashboard_offside_calibration.jpg) | ![](../docs/images/dashboard_offside_decide.jpg) |
+| ![](../docs/images/offside_decision_macieira.jpg) | ![](../docs/images/offside_birds_eye.png) |
+
 Red = offside line through the second-last defender (shaded band = 90 % confidence), yellow = attacker
 in an offside position, green = onside, magenta = calibrated pitch template re-projected on the image
 (it should sit on the painted lines). The vertical red "curtain" marks the plane through the defender.

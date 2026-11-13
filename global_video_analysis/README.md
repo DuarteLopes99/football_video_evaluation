@@ -23,6 +23,21 @@ match.mp4 ──▶ PERCEPTION ────────────────�
 * Where the recordings live and how to keep a season without filling the disk: [`docs/VIDEO_STORAGE.md`](docs/VIDEO_STORAGE.md)
 * Quick visual demo — players coloured by team + ball tracking + ball control, no calibration (`python simple_track.py <video> --start 24:38 --duration 30`; step-by-step debug: `python debug_simple.py <video> --time 24:40`): [`docs/SIMPLE_TRACKER.md`](docs/SIMPLE_TRACKER.md)
 
+## Screenshots
+
+| Dashboard (Analyse tab) | Player detection, live |
+|---|---|
+| ![](../docs/images/dashboard_analyse.png) | ![](../docs/images/dashboard_live_detection.jpg) |
+| **Results & flagged opportunities** | **Match report** |
+| ![](../docs/images/dashboard_results.jpg) | ![](../docs/images/report_overview.jpg) |
+
+Live frame of another match: blue / orange = the two teams, `REF`, and people who are not playing (`STAFF`,
+`SEC`, `FAN`) kept out of every statistic.
+
+![](../docs/images/player_detection_canedo.jpg)
+
+More in the [repository README](../README.md#screenshots).
+
 ## Start here: the launcher
 
 This folder is `football_video_evaluation/global_video_analysis/`; its sibling `../offside_code/` (offside lines on
