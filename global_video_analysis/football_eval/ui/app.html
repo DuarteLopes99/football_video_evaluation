@@ -115,7 +115,9 @@ function setPad() {
 let frame = 0, img = null, loadToken = 0, playing = false, clip = null;
 let step = null, overlay = { det: [], fit: null, geo: null, drag: null };
 let selLm = null, kitClass = "team0", selCheck = 0, selEvent = null;
-const KIT_COL = { team0: "#4a90e2", team1: "#ef8a3c", gk0: "#9b6bff", gk1: "#ff5fa2", referee: "#111111" };
+const KIT_COL = { team0: "#4a90e2", team1: "#ef8a3c", gk0: "#9b6bff", gk1: "#ff5fa2", referee: "#111111",
+  coach: "#00a0a0", fan: "#8c5078", police: "#14288c", security: "#ffe600" };
+const EXTRA = ["coach", "fan", "police", "security"];   // "Extra person": never a player (football_eval/people.py)
 const TEAM_COL = ["#4a90e2", "#ef8a3c"];
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -130,7 +132,7 @@ const SETUP_STEPS = [
   ["match", "Match & pitch", ["video", "pitch size", "team names"]],
   ["periods", "Periods & direction", ["periods", "attacking direction"]],
   ["overlays", "Overlays", ["overlays"]],
-  ["kits", "Kits", ["kits: outfield", "kits: goalkeepers", "kits: referee"]],
+  ["kits", "Kits", ["kits: outfield", "kits: goalkeepers", "kits: referee", "kits: extra people"]],
   ["landmarks", "Pitch landmarks", ["calibration"]],
   ["sheet", "Match sheet", ["match sheet", "rosters"]],
   ["check", "Checklist", []],
@@ -241,7 +243,7 @@ function draw() {
   if (S.mode === "review" && o.geo) {
     if (showLines) o.geo.lines.forEach((l) => line(l[0], l[1], l[2], l[3], "rgba(255,60,230,.85)", 1.2));
     if (showBoxes) o.geo.boxes.forEach((b) => {
-      const NP = {outside: "rgba(130,130,130,.6)", spectator: "rgba(140,80,120,.8)", staff: "rgba(0,160,160,.9)", steward: "rgba(255,230,0,.95)"};
+      const NP = {outside: "rgba(130,130,130,.6)", spectator: "rgba(140,80,120,.8)", staff: "rgba(0,160,160,.9)", steward: "rgba(255,230,0,.95)", police: "rgba(20,40,140,.95)"};
       if (NP[b.cls]) return rect(b.box, NP[b.cls], 1);          // fans / staff / security: not players
       const col = b.cls === "referee" ? "#111" : (b.team === 0 || b.team === 1) ? TEAM_COL[b.team] : "#ddd";
       rect(b.box, col, b.cls === "goalkeeper" ? 3.5 : 2);
@@ -442,18 +444,28 @@ P.overlays = () => {
 };
 
 P.kits = () => {
-  const nm = names(), lbl = { team0: nm[0] + " — outfield", team1: nm[1] + " — outfield", gk0: nm[0] + " — goalkeeper", gk1: nm[1] + " — goalkeeper", referee: "Referee" };
+  const nm = names(), lbl = { team0: nm[0] + " — outfield", team1: nm[1] + " — outfield", gk0: nm[0] + " — goalkeeper", gk1: nm[1] + " — goalkeeper", referee: "Referee",
+    coach: "Coach / staff", fan: "Fan", police: "Police", security: "Security / steward" };
+  const teamCls = S.kit_classes.filter((c) => !EXTRA.includes(c)), extraCls = S.kit_classes.filter((c) => EXTRA.includes(c));
+  const chip = (c) => `<button class="b ${c === kitClass ? "sel" : ""}" data-k="${c}"><span class="sw" style="display:inline-block;width:10px;height:10px;background:${KIT_COL[c]};border-radius:2px;margin-right:5px"></span>${esc(lbl[c])}</button>`;
+  const list = (c) => `<h3>${esc(lbl[c])} · ${(setup.kits[c] || []).length}</h3><div class="chips">${(setup.kits[c] || []).map((s, i) =>
+    `<span class="chip"><img src="${s.thumb || ""}"><span class="sw" style="background:${s.rgb}"></span><a href="#" data-goto="${s.frame}">${fmt(s.t)}</a><button data-rm="${c}:${i}">✕</button></span>`).join("") || '<span style="color:var(--muted);font-size:12px">none</span>'}</div>`;
   html(`<h2>Kits</h2>
   <p>1 · <button class="b primary" id="det">Detect players on this frame</button></p>
   <p>2 · Choose who you will click:</p>
-  <div class="chips">${S.kit_classes.map((c) => `<button class="b ${c === kitClass ? "sel" : ""}" data-k="${c}"><span class="sw" style="display:inline-block;width:10px;height:10px;background:${KIT_COL[c]};border-radius:2px;margin-right:5px"></span>${esc(lbl[c])}</button>`).join("")}</div>
+  <div class="chips">${teamCls.map(chip).join("")}</div>
+  ${extraCls.length ? `<p style="margin:10px 0 4px"><b>Extra person</b> <span style="color:var(--muted);font-size:12px">(not playing: never a team, never in a statistic)</span></p>
+  <div class="chips">${extraCls.map(chip).join("")}</div>` : ""}
   <p>3 · Click inside a player's box (or drag a box around a player the detector missed).</p>
-  ${S.kit_classes.map((c) => `<h3>${esc(lbl[c])} · ${(setup.kits[c] || []).length}</h3><div class="chips">${(setup.kits[c] || []).map((s, i) =>
-    `<span class="chip"><img src="${s.thumb || ""}"><span class="sw" style="background:${s.rgb}"></span><a href="#" data-goto="${s.frame}">${fmt(s.t)}</a><button data-rm="${c}:${i}">✕</button></span>`).join("") || '<span style="color:var(--muted);font-size:12px">none</span>'}</div>`).join("")}
+  ${teamCls.map(list).join("")}
+  ${extraCls.some((c) => (setup.kits[c] || []).length) || EXTRA.includes(kitClass) ? `<h3 style="margin-top:14px">Extra people</h3>${extraCls.map(list).join("")}` : ""}
   <div class="why"><b>Why manual:</b> without samples the system clusters shirt colours on its own: the two clusters come
   out in an arbitrary order (a swap attributes <i>every</i> statistic to the wrong team), and goalkeepers / referee are
   guessed. With 3+ clicks per kit — some in sunlight, some in shade, from both halves — the clusters are seeded with
-  your labels and can never swap; goalkeepers and referee are recognised by their own kit.</div>`);
+  your labels and can never swap; goalkeepers and referee are recognised by their own kit.
+  <br><b>Extra person:</b> people off the pitch are separated automatically (STAFF next to the touchline, FAN in the
+  stands, SEC in a hi-vis vest). Click a coach in a team tracksuit, a steward or police officer walking on the grass, or
+  fans behind the goal line when they are taken for players: 1-3 clicks each. Police only exists through these clicks.</div>`);
   bind("det", "onclick", async () => { $("panel").classList.add("busy");
     try { overlay.det = await api("/api/detect?frame=" + frame); overlay.det.frame = frame; flash(overlay.det.length + " people detected"); } finally { $("panel").classList.remove("busy"); } draw(); });
   document.querySelectorAll("[data-k]").forEach((b) => (b.onclick = () => { kitClass = b.dataset.k; renderPanel(); }));

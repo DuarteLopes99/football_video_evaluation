@@ -51,6 +51,10 @@ you type:
    snapped to the detected player (a loose box is mostly grass and spoils the shirt colour).
    These clicks drive the boxes you see during processing: every player is matched to the nearest clicked samples,
    the tracks you clicked keep your label (marked `*` on the live screen).
+   **Extra person** (optional, under the team buttons): *Coach / staff*, *Fan*, *Police*, *Security / steward*. Click
+   1-3 of each when they get boxed as players, e.g. a coach in a team tracksuit, a steward or police officer on the
+   grass, fans standing behind the goal line. They are never counted as players; police only appears through these
+   clicks (`POL`).
 5. **Pitch landmarks:** click the points you can see (centre spot, corners of the box, …), then check the overlay.
    **Near touchline not in the picture?** Tick *Show the area outside the picture*: a grey margin appears around
    the frame. Follow the painted lines and click where a near-side landmark *would* be (e.g. `halfway_bottom`, a box
@@ -94,7 +98,8 @@ Sections filled in by the assistant show **Pre-filled, not yet confirmed**. Chec
     grey = on the pitch but not decided yet. Labels show the short team name + track number; `*` = a player you clicked
     in the setup.
   * people who are not playing, as thin tagged boxes: `STAFF` (teal: coaches, bench, ball boys next to the touchline),
-    `SEC` (yellow: hi-vis security), `FAN` (mauve: stands). They are never counted as players.
+    `SEC` (yellow: hi-vis security), `FAN` (mauve: stands), `POL` (dark blue: police, from the *Extra person* clicks).
+    They are never counted as players.
   * if the near touchline is out of view, the status bar says how far before it the picture ends and the minimap
     darkens that strip.
   
@@ -175,7 +180,8 @@ the match analysis.
 | "address already in use" | the launcher is already running: use the open tab, or press *Quit* there first |
 | Lines far from the painted lines | review → *Camera repair*; in the setup add landmark frames (≥ 4 clicks each) near each kick-off and every 5–10 min — each one is a checkpoint the camera restarts from |
 | Report shows zeros everywhere | open *Who was detected* in the report: it says how many people were found and on how many frames positions exist. 0 % positions = no calibration: click ≥ 4 landmarks on 1–2 frames in the setup |
-| Fans / coaches counted as players | they are separated automatically (`FAN` / `STAFF` / `SEC`); if many fans stand ON the grass behind a goal, lower `pitch.offpitch_margin_m` |
+| Fans / coaches / police counted as players | they are separated automatically (`FAN` / `STAFF` / `SEC`); when one still gets a team box, click 1-3 of them as an **Extra person** in the setup (Kits step) and process again; many fans ON the grass behind a goal: also lower `pitch.offpitch_margin_m` |
+| `Can't read ONNX file: models/yolox.onnx` | the detector model is not in git (too big) and was never downloaded on this computer. Runs now fetch it themselves; offline, run `python scripts/get_models.py` once when online |
 | The log says "no match setup for this video" | the setup's video path has another file name: open the setup for this recording in the launcher (step 1) or pass `--setup` |
 | Teams swapped or mixed | add kit clicks in sun **and** shade on 3–4 moments (setup step 4), then process again. The run prints how many clicked samples are recognised by the others ("leave-one-out"): below ~90 % the kits are hard to tell apart — add samples |
 | Processing too slow | Speed *fast*; make sure `onnxruntime` is installed (`.venv/bin/pip install onnxruntime`, done automatically by start.command); set the periods so half-time is skipped |

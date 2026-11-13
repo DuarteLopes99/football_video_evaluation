@@ -21,7 +21,8 @@ What it guarantees:
    A stamp of those files, the Python version and the detector runtime skips the install when nothing changed.
 4. **The right detector runtime**: ``onnxruntime-gpu[cuda,cudnn]`` when ``nvidia-smi`` finds an NVIDIA GPU, else
    ``onnxruntime`` (CoreML on a Mac); never both. If it cannot be installed the detector uses cv2.dnn.
-5. **A check** (``football_eval.envcheck``) that what is installed matches the pins; ``pip freeze`` is saved in
+5. **The model files** (``*.onnx``, not in git): fetched from the OpenCV Model Zoo when missing, at every start.
+6. **A check** (``football_eval.envcheck``) that what is installed matches the pins; ``pip freeze`` is saved in
    the environment folder for comparison between computers.
 """
 from __future__ import annotations
@@ -281,6 +282,26 @@ def stamp(pyver, runtime_kind: str) -> str:
     return h.hexdigest()
 
 
+MODEL_FILES = {   # file -> fetch script (each also copies from the sibling project before downloading)
+    "global_video_analysis/models/yolox.onnx": "global_video_analysis/scripts/get_models.py",
+    "offside_code/models/yolox.onnx": "offside_code/scripts/download_models.py",
+    "offside_code/models/mp_pose.onnx": "offside_code/scripts/download_models.py",
+}
+
+
+def ensure_models(vp: Path) -> bool:
+    """Run the fetch scripts of the models that are missing (or < 1 MB: a git-LFS pointer). Never fatal."""
+    missing = [f for f in MODEL_FILES if not ((ROOT / f).is_file() and (ROOT / f).stat().st_size >= 1_000_000)]
+    ok = True
+    for script in dict.fromkeys(MODEL_FILES[f] for f in missing):
+        say(f"Fetching the models of {script.split('/')[0]} (not in git: ~40 MB, once) ...")
+        if subprocess.call([str(vp), str(ROOT / script)], cwd=str((ROOT / script).parent.parent), env=ENV) != 0:
+            ok = False
+            say("The models could not be downloaded (no internet?). The dashboard starts, but processing a video "
+                "needs them: run start.command / start.bat again when online.")
+    return ok
+
+
 def envcheck(vp: Path) -> int:
     return subprocess.call([str(vp), "-m", "football_eval.envcheck"], cwd=str(ROOT / "global_video_analysis"), env=ENV)
 
@@ -353,7 +374,9 @@ def main() -> int:
         say(f"Environment ready: Python {ver_str(pyver)}, detector runtime {rt or 'cv2.dnn'}.")
         if envcheck(vp) != 0:
             say("(the dashboard still starts; the differences above may change results slightly)")
-    # 3. start the dashboard
+    # 3. the model files (every start: cheap when they are there)
+    ensure_models(vp)
+    # 4. start the dashboard
     if a.run is not None:
         return subprocess.call([str(vp), str(ROOT / "global_video_analysis" / "scripts" / "launcher.py"), *a.run],
                                cwd=str(ROOT), env=ENV)

@@ -34,9 +34,12 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 
 SETUP_VERSION = 1
-KIT_CLASSES = ("team0", "team1", "gk0", "gk1", "referee")
+KIT_CLASSES = ("team0", "team1", "gk0", "gk1", "referee",
+               "coach", "fan", "police", "security")    # extra people (not playing): same as teams.KIT_CLASSES
 KIT_LABELS = {"team0": "Team A outfield", "team1": "Team B outfield", "gk0": "Team A goalkeeper",
-              "gk1": "Team B goalkeeper", "referee": "Referee"}
+              "gk1": "Team B goalkeeper", "referee": "Referee",
+              "coach": "Extra person: coach / staff", "fan": "Extra person: fan", "police": "Extra person: police",
+              "security": "Extra person: security / steward"}
 EVENT_TYPES = ("goal", "own_goal", "penalty_goal", "yellow", "red", "sub", "penalty_missed", "note")
 SOURCES = ("manual", "assistant", "auto", "default")     # who produced a section
 
@@ -251,6 +254,10 @@ def checklist(setup: dict, root: Optional[Path] = None) -> List[dict]:
         "goalkeepers otherwise guessed from time spent in the box (xG freeze frame, saves)")
     add("kits: referee", "ok" if k["referee"] else "warn", f"{k['referee']} samples",
         "referees otherwise mixed into a team (passes / pressing)")
+    extra = {c: k[c] for c in ("coach", "fan", "police", "security") if k.get(c)}
+    add("kits: extra people", "ok",
+        ", ".join(f"{n} {c}" for c, n in extra.items()) if extra else "none (optional)",
+        "coaches / fans / police / security clicked here are never counted as players, even standing on the grass")
 
     cal = setup.get("calibration", {})
     mode = cal.get("mode", "static")
@@ -325,6 +332,7 @@ def checklist(setup: dict, root: Optional[Path] = None) -> List[dict]:
 
 ITEM_SECTION = {"pitch size": "pitch", "overlays": "overlays", "periods": "periods", "attacking direction": "direction",
                 "team names": "teams", "kits: outfield": "kits", "kits: goalkeepers": "kits", "kits: referee": "kits",
+                "kits: extra people": "kits",
                 "calibration": "calibration", "match sheet": "match_sheet"}
 
 
@@ -375,7 +383,7 @@ def apply_to_config(setup: dict, cfg) -> List[str]:
         cfg.teams.kit_samples = {c: list(setup["kits"].get(c, [])) for c in KIT_CLASSES}
         cfg.teams.kit_colors = None          # superseded by the clicked samples
         log.append(f"teams: {n_kits} clicked kit samples -> seeded classification "
-                   + ", ".join(f"{c}={len(setup['kits'][c])}" for c in KIT_CLASSES))
+                   + ", ".join(f"{c}={len(setup['kits'].get(c, []))}" for c in KIT_CLASSES if setup["kits"].get(c)))
     cal = setup.get("calibration", {})
     mode = cal.get("mode")
     if mode == "ptz" and cal.get("camera_file"):
