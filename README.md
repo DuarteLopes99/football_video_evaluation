@@ -8,6 +8,42 @@ environment:
 | [`global_video_analysis/`](global_video_analysis/) | Full-match analysis of an mp4: detection, tracking, teams, camera, ball → events, xG, team / player stats, timeline, flagged opportunities, report | [`README`](global_video_analysis/README.md), [`USER_GUIDE`](global_video_analysis/docs/USER_GUIDE.md) |
 | [`offside_code/`](offside_code/) | Offside / onside on a single frame: semi-manual camera calibration from a set of images, then the decision with geometrically correct offside lines and uncertainty | [`README`](offside_code/README.md), [`STUDIO_GUIDE`](offside_code/docs/STUDIO_GUIDE.md) |
 
+## Screenshots
+
+Real recordings of UD Mansores matches, one camera each, processed on a laptop.
+
+**Dashboard: pick a recording, run the four steps** (setup, process, review, re-run analytics)
+
+![Analyse tab](docs/images/dashboard_analyse.png)
+
+**Player detection and team classification, live while processing.** Boxes in the shirt colour of each team
+(clicked once in the setup), goalkeepers and referee apart; coaches, security and fans are tagged `STAFF` / `SEC` /
+`FAN` and never counted as players. Pitch lines come from the tracked camera pose, the minimap from the
+homography; the dashed rectangles are the detector tiles laid over the pitch only.
+
+| Match screen, live (J3, evening light) | Live frame (Canedo vs UD Mansores) |
+|---|---|
+| ![Live detection in the dashboard](docs/images/dashboard_live_detection.jpg) | ![Detected players, staff and fans](docs/images/player_detection_canedo.jpg) |
+
+**Results and flagged opportunities:** score, every goal / shot / attack near goal with its clip, key metrics graded
+by confidence for this match, and the full HTML report (data quality, who was detected).
+
+| Results & opportunities tab | Match report |
+|---|---|
+| ![Results tab](docs/images/dashboard_results.jpg) | ![Report](docs/images/report_overview.jpg) |
+
+**Offside on a single frame** (`offside_code/`, *Offside* tab): click the painted lines on a few frames of one
+camera to calibrate it, then decide. Each attacker gets OFFSIDE / ONSIDE with the distance to the line and a
+probability from the calibration uncertainty; the bird's-eye view shows the reconstruction.
+
+| Calibration: click the pitch markings | Decide: teams, direction, ball |
+|---|---|
+| ![Offside calibration](docs/images/dashboard_offside_calibration.jpg) | ![Offside decide step](docs/images/dashboard_offside_decide.jpg) |
+
+| Decision (Cerqueira vs Macieira, handheld phone) | Bird's-eye reconstruction |
+|---|---|
+| ![Offside decision with lines](docs/images/offside_decision_macieira.jpg) | ![Bird's-eye view](docs/images/offside_birds_eye.png) |
+
 ## Start
 
 Double-click **`start.command`** (macOS; `./start.command` on Linux, **`start.bat`** on Windows) — or the
