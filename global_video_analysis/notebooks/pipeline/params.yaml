@@ -1,0 +1,29 @@
+# Parameters shared by every notebook in notebooks/pipeline/ (read by football_eval/nbtools.py).
+# Edit this file once, then run the notebooks in order (00 -> 08). Another file: set FVE_NB_PARAMS=<path>.
+#
+# Paths are relative to global_video_analysis/ (or absolute).
+
+video: data/videos/J3_MansoresSanguedo_1080p.mp4
+setup: auto                    # match_setup json; auto = configs/match_setup_<video name>.json; null = no setup
+config: configs/default.yaml
+
+# the window every perception notebook works on (seconds in the video). Keep it short (10-60 s): the
+# detector runs on every analysed frame (~0.1-0.2 s per frame on a CPU, much less on a GPU).
+t_start: 1745.0
+duration_s: 20.0
+analysis_fps: 10.0
+probe_t: 1759.4                # one frame for the single-frame checks (null = middle of the window)
+
+run_name: null                 # stage folder outputs/_pipeline_nb/<run_name>/ (null = <video>_t<t_start>)
+runtime: null                  # detector runtime override: auto | cpu | cuda | directml | coreml | cv2 (null = config)
+autocalib: true                # solve the venue camera from the clicked landmarks if needed (like run_analysis.py)
+
+# a finished run_analysis.py output folder: 07 (analytics) and 08 (training data) use it when set
+full_run_dir: outputs/J3_MansoresSanguedo_1080p
+
+# Windows example (the match from the error report):
+# video: data/videos/UDM_X_ADS_B_1080p.mp4
+# setup: configs/match_setup_UDM_X_ADS_B_1080p.json
+# t_start: 870.0
+# probe_t: 882.4               # the frame with the 10 clicked landmarks
+# full_run_dir: outputs/UDM_X_ADS_B_1080p

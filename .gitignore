@@ -24,3 +24,6 @@ offside_code/venues/*/*_background.png
 
 # TensorRT engine cache (detection.runtime: tensorrt)
 **/models/trt_cache/
+
+# pipeline notebooks: exported training datasets (scripts/build_pipeline_notebooks.py, notebook 08)
+global_video_analysis/data/datasets/
