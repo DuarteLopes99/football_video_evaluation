@@ -1,5 +1,8 @@
 # core (no PyTorch needed). Runs on the CPU; a GPU is used automatically when there is one (football_eval/accel.py):
-# start.command / start.bat swap onnxruntime for onnxruntime-gpu[cuda,cudnn] when nvidia-smi finds an NVIDIA GPU.
+# start.command / start.bat replace onnxruntime by the onnxruntime-gpu build that works with this NVIDIA driver / GPU
+# (checked with a real CUDA session), or by onnxruntime-directml on Windows when CUDA cannot work.
+# Installing by hand on an NVIDIA machine? Do NOT keep onnxruntime and onnxruntime-gpu together (they overwrite each
+# other's files): pip uninstall -y onnxruntime onnxruntime-gpu && pip install "$(python -m football_eval.accel --recommend)"
 numpy>=1.24
 scipy>=1.10
 pandas>=2.0

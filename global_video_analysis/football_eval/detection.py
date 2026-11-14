@@ -129,7 +129,7 @@ class _OnnxRunner:
     """onnxruntime session on the fastest device (GPU when there is one, see ``accel.py``) or cv2.dnn as the fallback
     (on CUDA too when OpenCV was built with it)."""
 
-    def __init__(self, model_path: str, size: int, runtime: str = "auto", threads: int = 0):
+    def __init__(self, model_path: str, size: int, runtime: str = "auto", threads: int = 0, gpu_id: int = 0):
         from . import accel
         self.size, self.sess, self.net, self.name, self.ms = size, None, None, "cv2.dnn", None
         rt = (runtime or "auto").lower()
@@ -139,11 +139,20 @@ class _OnnxRunner:
                 so = ort.SessionOptions()
                 if threads:
                     so.intra_op_num_threads = int(threads)
-                cands = accel.provider_candidates(rt)
+                cands = accel.provider_candidates(rt, gpu_id=gpu_id)
+                self.cuda_check = None
                 best = None
                 x = np.random.default_rng(0).uniform(0, 255, (1, 3, size, size)).astype(np.float32)
                 for prov in cands:
                     pname = accel.provider_name(prov)
+                    if pname in ("CUDAExecutionProvider", "TensorrtExecutionProvider"):
+                        # "CUDA listed" is not "CUDA works": try it in a separate process first, so a broken set-up
+                        # costs one clear line instead of an EP Error page and a silent CPU fallback (accel.py)
+                        if self.cuda_check is None:
+                            self.cuda_check = accel.cuda_usable(model_path, gpu_id)
+                        if not self.cuda_check.get("ok"):
+                            print(f"[detector] {pname} skipped: {accel.cuda_hint(self.cuda_check)}")
+                            continue
                     try:
                         sess = ort.InferenceSession(model_path, so, providers=prov)
                         if sess.get_providers()[0] != pname:      # provider silently fell back to CPU
@@ -187,8 +196,9 @@ class YoloxOnnxDetector:
     BALL_CLS = 32  # COCO "sports ball"
 
     def __init__(self, model_path: str, conf_player=0.3, conf_ball=0.15, tile=1024, overlap=96,
-                 input_size=640, ignore_regions=(), min_box_h_frac=0.012, runtime: str = "auto", threads: int = 0):
-        self.runner = _OnnxRunner(model_path, input_size, runtime, threads)
+                 input_size=640, ignore_regions=(), min_box_h_frac=0.012, runtime: str = "auto", threads: int = 0,
+                 gpu_id: int = 0):
+        self.runner = _OnnxRunner(model_path, input_size, runtime, threads, gpu_id)
         self.S, self.tile, self.overlap = input_size, int(tile), int(overlap)
         self.cp, self.cb = conf_player, conf_ball
         self.ignore, self.min_h_frac = list(ignore_regions or []), min_box_h_frac
@@ -284,7 +294,7 @@ def build_detector(cfg):
         overlap = d.tile - d.tile_stride if (d.tile_stride and d.tile_stride < d.tile) else d.tile_overlap
         return YoloxOnnxDetector(d.model_path, d.conf_player, d.conf_ball, d.tile, overlap,
                                  ignore_regions=cfg.video.ignore_regions, min_box_h_frac=d.min_box_h_frac,
-                                 runtime=d.runtime, threads=d.threads)
+                                 runtime=d.runtime, threads=d.threads, gpu_id=getattr(d, "gpu_id", 0))
     if d.backend == "ultralytics":
         return UltralyticsDetector(d.model_path, d.class_map, d.conf_player, d.conf_ball, d.imgsz, d.device,
                                    cfg.video.ignore_regions, d.min_box_h_frac)
