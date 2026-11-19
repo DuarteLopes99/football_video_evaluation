@@ -40,6 +40,7 @@ class DetectionCfg:
     pitch_roi: bool = True              # only look at the calibrated pitch (+ margin): fewer tiles, no crowd boxes
     runtime: str = "auto"               # yolox_onnx: "auto" (fastest of GPU / CPU, see accel.py) | "cpu" | "cuda" | "tensorrt" | "directml" | "coreml" | "cv2"
     threads: int = 0                    # onnxruntime threads (0 = all cores)
+    gpu_id: int = 0                     # which NVIDIA GPU (nvidia-smi index) for CUDA / TensorRT
     device: str = "auto"                # PyTorch models (ultralytics, SigLIP): "auto" (cuda:0 > mps > cpu) | "cpu" | "mps" | "cuda:0"
     min_box_h_frac: float = 0.012       # drop boxes smaller than this fraction of image height
 
