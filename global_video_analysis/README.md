@@ -23,6 +23,21 @@ match.mp4 ──▶ PERCEPTION ────────────────�
 * Where the recordings live and how to keep a season without filling the disk: [`docs/VIDEO_STORAGE.md`](docs/VIDEO_STORAGE.md)
 * Quick visual demo — players coloured by team + ball tracking + ball control, no calibration (`python simple_track.py <video> --start 24:38 --duration 30`; step-by-step debug: `python debug_simple.py <video> --time 24:40`): [`docs/SIMPLE_TRACKER.md`](docs/SIMPLE_TRACKER.md)
 
+## Screenshots
+
+| Dashboard (Analyse tab) | Player detection, live |
+|---|---|
+| ![](../docs/images/dashboard_analyse.png) | ![](../docs/images/dashboard_live_detection.jpg) |
+| **Results & flagged opportunities** | **Match report** |
+| ![](../docs/images/dashboard_results.jpg) | ![](../docs/images/report_overview.jpg) |
+
+Live frame of another match: blue / orange = the two teams, `REF`, and people who are not playing (`STAFF`,
+`SEC`, `FAN`) kept out of every statistic.
+
+![](../docs/images/player_detection_canedo.jpg)
+
+More in the [repository README](../README.md#screenshots).
+
 ## Start here: the launcher
 
 This folder is `football_video_evaluation/global_video_analysis/`; its sibling `../offside_code/` (offside lines on
@@ -139,8 +154,8 @@ What was evaluated and made manual (details and numbers in `docs/MANUAL_VALIDATI
 
 ```bash
 cd football_video_evaluation                 # the umbrella folder: .venv is shared with ../offside_code
-python3 -m venv .venv && source .venv/bin/activate   # Windows: py -3 -m venv .venv && .venv\Scripts\activate
-pip install -r global_video_analysis/requirements.txt -r offside_code/requirements.txt
+python3 setup_env.py                         # Python 3.12-3.14 + .venv + pinned packages (Windows: py setup_env.py)
+source .venv/bin/activate                    # Windows: .venv\Scripts\activate
 cd global_video_analysis
 python scripts/get_models.py                 # YOLOX detector (copied from ../offside_code if present)
 

@@ -18,6 +18,14 @@ metrics. Step by step: [`docs/STUDIO_GUIDE.md`](docs/STUDIO_GUIDE.md). Venues ma
 |---|---|---|
 | ![](outputs/offside_AFC_attacks_right.png) | ![](outputs/offside_AFC_attacks_left.png) | ![](outputs/birds_eye.png) |
 
+In the dashboard (*Offside* tab): calibration by clicking the painted lines, then the decision on a handheld-phone
+frame (Cerqueira vs Macieira, panning camera) with its bird's-eye reconstruction.
+
+| Calibrate | Decide |
+|---|---|
+| ![](../docs/images/dashboard_offside_calibration.jpg) | ![](../docs/images/dashboard_offside_decide.jpg) |
+| ![](../docs/images/offside_decision_macieira.jpg) | ![](../docs/images/offside_birds_eye.png) |
+
 Red = offside line through the second-last defender (shaded band = 90 % confidence), yellow = attacker
 in an offside position, green = onside, magenta = calibrated pitch template re-projected on the image
 (it should sit on the painted lines). The vertical red "curtain" marks the plane through the defender.
@@ -27,9 +35,9 @@ in an offside position, green = onside, magenta = calibrated pitch template re-p
 ## Quick start
 
 ```bash
-cd offside_code                                # inside football_video_evaluation/ (the shared ../.venv works too)
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+# from football_video_evaluation/: shared .venv with Python 3.12-3.14 + pinned packages (Windows: py setup_env.py)
+python3 setup_env.py && source .venv/bin/activate      # Windows: .venv\Scripts\activate
+cd offside_code                                # (on its own: pip install -r requirements.txt -c ../constraints.txt)
 python offside_studio.py                       # the web workflow (same as the dashboard's Offside tab)
 python scripts/download_models.py              # only if models/ is empty (≈ 41 MB, OpenCV Model Zoo)
 

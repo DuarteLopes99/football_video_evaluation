@@ -31,8 +31,8 @@ import numpy as np
 TEAM_BGR = {"team0": (226, 144, 74), "team1": (60, 138, 239), "gk0": (255, 107, 155), "gk1": (162, 95, 255),
             "referee": (25, 25, 25), None: (190, 190, 190),           # same colours as the setup / review UI
             # people who are not playing (football_eval/people.py): thin boxes, never counted as players
-            "staff": (160, 160, 0), "steward": (0, 230, 255), "spectator": (120, 80, 140)}
-NOT_PLAYING = ("staff", "steward", "spectator")
+            "staff": (160, 160, 0), "steward": (0, 230, 255), "spectator": (120, 80, 140), "police": (140, 40, 20)}
+NOT_PLAYING = ("staff", "steward", "spectator", "police")
 
 
 class LivePreview:
@@ -85,7 +85,7 @@ class LivePreview:
                       video_duration_s=round(self.info.duration_s, 1), updated=time.time(),
                       n_tiles=len(tiles) if tiles else None,
                       labelled={k: lab.count(k) for k in ("team0", "team1", "gk0", "gk1", "referee", "staff",
-                                                           "steward", "spectator")},
+                                                           "steward", "spectator", "police")},
                       clicked_tracks_in_view=int(sum(bool(m) for m in (manual or []))))
             if self.total:
                 st["progress"] = round(min(1.0, n / self.total), 4)
@@ -186,12 +186,12 @@ def label_texts(team_names) -> dict:
     names = list(team_names or ["Team A", "Team B"]) + ["Team B"]
     ab = [_short(n, "AB"[i]) for i, n in enumerate(names[:2])]
     return {"team0": ab[0], "team1": ab[1], "gk0": "GK " + ab[0], "gk1": "GK " + ab[1], "referee": "REF",
-            "staff": "STAFF", "steward": "SEC", "spectator": "FAN"}
+            "staff": "STAFF", "steward": "SEC", "spectator": "FAN", "police": "POL"}
 
 
 def row_label(cls: str, team: int) -> Optional[str]:
     """tracks.csv row (cls, team) -> drawing class: team0 | team1 | gk0 | gk1 | referee | staff | steward |
-    spectator | None (on the pitch, team unknown)."""
+    spectator | police | None (on the pitch, team unknown)."""
     if cls in NOT_PLAYING:
         return cls
     if cls == "outside":                                    # runs made before the people classes existed
@@ -243,7 +243,7 @@ def draw_legend(v: np.ndarray, team_names, colors: Optional[dict] = None, sc: Op
     names = list(team_names or ["Team A", "Team B"]) + ["Team B"]
     items = [("team0", names[0]), ("team1", names[1]), ("gk0", "GK " + names[0]), ("gk1", "GK " + names[1]),
              ("referee", "referee"), (None, "unknown (on pitch)"), ("staff", "staff / bench"),
-             ("steward", "security (hi-vis)"), ("spectator", "fans / stands")]
+             ("steward", "security (hi-vis)"), ("police", "police"), ("spectator", "fans / stands")]
     if counts is not None:
         items = [(c, f"{n} ({counts.get(c, 0)})") for c, n in items]
     fs = 0.42 * sc

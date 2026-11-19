@@ -178,11 +178,19 @@ def assign_goalkeepers(tracks, pitch, team_side: dict, box_depth: float = 18.0, 
 
 
 # ----------------------------------------------------------------------------- supervised: clicked kit samples
-KIT_CLASSES = ("team0", "team1", "gk0", "gk1", "referee")
+TEAM_KIT_CLASSES = ("team0", "team1", "gk0", "gk1", "referee")
+# "Extra person" clicked in the setup: people who are NOT playing. Each becomes a person type of people.py
+# (never a team, never in a statistic); the clicks teach the classifier what they look like.
+EXTRA_KIT_CLASSES = ("coach", "fan", "police", "security")
+EXTRA_TYPE = {"coach": "staff", "fan": "spectator", "police": "police", "security": "steward"}
+KIT_CLASSES = TEAM_KIT_CLASSES + EXTRA_KIT_CLASSES
 # label codes used in the per-crop predictions
-CODE = {"team0": 0, "team1": 1, "gk0": 2, "gk1": 3, "referee": 4}
+CODE = {"team0": 0, "team1": 1, "gk0": 2, "gk1": 3, "referee": 4, "coach": 5, "fan": 6, "police": 7, "security": 8}
 CODE_TO_TEAM_CLS = {0: (0, "player"), 1: (1, "player"), 2: (0, "goalkeeper"), 3: (1, "goalkeeper"),
-                    4: (-1, "referee"), -1: (-1, None)}
+                    4: (-1, "referee"), -1: (-1, None),
+                    **{CODE[c]: (-1, EXTRA_TYPE[c]) for c in EXTRA_KIT_CLASSES}}
+EXTRA_CODES = frozenset(CODE[c] for c in EXTRA_KIT_CLASSES)
+NOT_PLAYING_ROLES = frozenset(EXTRA_TYPE.values())         # staff, spectator, police, steward
 
 
 class KitClassifier:
@@ -207,6 +215,7 @@ class KitClassifier:
         if "team0" not in self.samples or "team1" not in self.samples:
             raise ValueError("KitClassifier needs at least one clicked sample of each team's outfield kit")
         self.classes = [c for c in KIT_CLASSES if c in self.samples]
+        self.has_extra = any(c in self.samples for c in EXTRA_KIT_CLASSES)
         self.q, self.f, self.k = outlier_quantile, outlier_factor, k
         self.thr = np.inf
         self.report: dict = {}
@@ -291,7 +300,8 @@ class KitClassifier:
         return self
 
     def predict(self, feats: np.ndarray, return_margin: bool = False):
-        """Codes: 0/1 outfield team, 2/3 goalkeeper of team 0/1, 4 referee, -1 unknown."""
+        """Codes: 0/1 outfield team, 2/3 goalkeeper of team 0/1, 4 referee, 5-8 extra person (coach, fan, police,
+        security: not playing), -1 unknown."""
         X = np.asarray(feats, float)
         if len(X) == 0:
             return (np.zeros(0, int), np.zeros(0)) if return_margin else np.zeros(0, int)
@@ -334,7 +344,10 @@ def person_like(box) -> bool:
     return w >= 6 and h >= 14 and 1.1 <= h / max(w, 1e-9) <= 5.0
 
 
-CODE_NAME = {0: "team0", 1: "team1", 2: "gk0", 3: "gk1", 4: "referee", -1: None}
+CODE_NAME = {**{v: k for k, v in CODE.items()}, -1: None}
+# what the live view / replay draws for a code: extra people as their person type (STAFF / FAN / POL / SEC)
+CODE_LABEL = {**CODE_NAME, **{CODE[c]: EXTRA_TYPE[c] for c in EXTRA_KIT_CLASSES}}
+VOTE_COLS = {**{v: f"votes_{k}" for k, v in CODE.items()}, -1: "votes_unknown"}
 
 
 class TrackVotes:
@@ -348,7 +361,7 @@ class TrackVotes:
         for tid, c in zip(tids, codes):
             if tid < 0:
                 continue
-            v = self.votes.setdefault(int(tid), np.zeros(6, int))
+            v = self.votes.setdefault(int(tid), np.zeros(len(CODE) + 1, int))
             v[int(c) + 1] += 1
 
     def label(self, tid: int, fallback: int = -1) -> int:
@@ -369,7 +382,7 @@ def apply_manual(assignment, manual: dict, min_conflict_share: float = 0.8, min_
     a = assignment.copy() if assignment is not None and len(assignment) else pd.DataFrame(
         columns=["track_id", "n_crops", "team", "role", "share", "decision"])
     a["clicked"] = ""
-    names = {0: "votes_team0", 1: "votes_team1", 2: "votes_gk0", 3: "votes_gk1", 4: "votes_referee"}
+    names = {c: v for c, v in VOTE_COLS.items() if c >= 0}
     for tid, code in manual.items():
         team, role = CODE_TO_TEAM_CLS[int(code)]
         row = a.index[a.track_id == tid]
@@ -398,24 +411,24 @@ def vote_roles(track_ids: np.ndarray, codes: np.ndarray, min_share: float = 0.6)
     if len(df) == 0:
         return pd.DataFrame(columns=["track_id", "n_crops", "team", "role", "share", "decision"])
     ct = df.groupby(["track_id", "code"]).size().unstack(fill_value=0)
-    names = {0: "votes_team0", 1: "votes_team1", 2: "votes_gk0", 3: "votes_gk1", 4: "votes_referee", -1: "votes_unknown"}
+    names = dict(VOTE_COLS)
     ct = ct.rename(columns=names)
     for c in names.values():
         if c not in ct:
             ct[c] = 0
     ct = ct[list(names.values())]
-    n = ct.sum(1)
+    n = ct.sum(axis=1)
     known = ct.drop(columns="votes_unknown")
-    best = known.idxmax(1)
-    share = known.max(1) / n.clip(lower=1)
+    best = known.idxmax(axis=1)
+    share = known.max(axis=1) / n.clip(lower=1)
     inv = {v: k for k, v in names.items()}
-    tie = known.eq(known.max(1), axis=0).sum(1) > 1          # two classes with the same top count -> undecided
-    code = best.map(inv).where((known.max(1) > 0) & ~tie, -1)
+    tie = known.eq(known.max(axis=1), axis=0).sum(axis=1) > 1          # two classes with the same top count -> undecided
+    code = best.map(inv).where((known.max(axis=1) > 0) & ~tie, -1)
     out = ct.copy()
     out["n_crops"] = n
     out["team"] = [CODE_TO_TEAM_CLS[int(c)][0] for c in code]
     out["role"] = [CODE_TO_TEAM_CLS[int(c)][1] or "unknown" for c in code]
     out["share"] = share.round(3)
-    out["decision"] = np.where(code < 0, np.where(tie & (known.max(1) > 0), "tie -> unknown", "unknown"),
+    out["decision"] = np.where(code < 0, np.where(tie & (known.max(axis=1) > 0), "tie -> unknown", "unknown"),
                                np.where(share >= min_share, "majority", "plurality (ambiguous)"))
     return out.reset_index()

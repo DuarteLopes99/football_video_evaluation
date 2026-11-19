@@ -37,6 +37,8 @@ def _to_gpu(net):
 
 class PlayerDetector:
     def __init__(self, models_dir='models', input_size=640, tile=900, stride=600, score_thr=0.25):
+        from .models import ensure_models          # models/*.onnx is not in git: fetched here when missing
+        models_dir = ensure_models(models_dir)
         self.det = cv2.dnn.readNet(os.path.join(models_dir, 'yolox.onnx'))
         self.pose_net = cv2.dnn.readNet(os.path.join(models_dir, 'mp_pose.onnx'))
         self.device = _to_gpu(self.det)

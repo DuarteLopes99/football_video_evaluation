@@ -664,9 +664,9 @@ const TOG = {lines: true, boxes: true, ids: false, ball: true, events: true, min
 let TCOL = ['#4a90e2', '#ef8a3c']; const GREY = '#b8b8b8', TCOL0 = ['#4a90e2', '#ef8a3c'];
 // same colours as the live view (football_eval/live.py TEAM_BGR): the replay must look like what was processed
 const PAL = {team0: '#4a90e2', team1: '#ef8a3c', gk0: '#9b6bff', gk1: '#ff5fa2', referee: '#191919', unknown: '#bebebe',
-  staff: '#00a0a0', steward: '#ffe600', spectator: '#8c5078'};
-const NOTPLAY = new Set(['staff', 'steward', 'spectator', 'outside']);
-let LAB = {team0: 'A', team1: 'B', gk0: 'GK A', gk1: 'GK B', referee: 'REF', staff: 'STAFF', steward: 'SEC', spectator: 'FAN'};
+  staff: '#00a0a0', steward: '#ffe600', spectator: '#8c5078', police: '#14288c'};
+const NOTPLAY = new Set(['staff', 'steward', 'spectator', 'police', 'outside']);
+let LAB = {team0: 'A', team1: 'B', gk0: 'GK A', gk1: 'GK B', referee: 'REF', staff: 'STAFF', steward: 'SEC', spectator: 'FAN', police: 'POL'};
 function boxKey(cls, tm) {
   if (NOTPLAY.has(cls)) return cls === 'outside' ? 'spectator' : cls;
   if (cls === 'referee') return 'referee';

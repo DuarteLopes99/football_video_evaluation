@@ -57,8 +57,16 @@ module that implements the rule. Version 0.1 — rules are deliberately simple a
 | `staff` | off the pitch, next to the touchline: coaches, substitutes, bench, ball boys | teal, thin, tag `STAFF` |
 | `steward` | off the pitch, fluorescent hi-vis vest: security | yellow, thin, tag `SEC` |
 | `spectator` | off the pitch, in the stands / behind the fences | mauve, thin, tag `FAN` |
+| `police` | looks like an *Extra person: police* clicked in the setup (on or off the pitch) | dark blue, thin, tag `POL` |
 
-`outside` in runs made before this version = any of the three off-pitch types.
+**Extra person** (setup → Kits): coaches, fans, police and security can be clicked like a kit. Each click is a class of
+the kit classifier that maps to a person type: *coach* → `staff`, *fan* → `spectator`, *police* → `police`,
+*security* → `steward`. On the pitch, a person closer to one of these clicks than to any team kit is that type, so a coach
+in a team tracksuit or a steward walking on the grass is not a player; off the pitch the clicks refine the zone rule
+(the only way to get `police`). A track clicked as an extra person keeps that type. Like every off-pitch type they have
+no team and are in no statistic.
+
+`outside` in runs made before this version = any of the off-pitch types.
 
 **Only the game is analysed.** With the kick-off / final whistle of each half in the setup (`periods`), the video is
 processed only inside them (`video.only_periods: true`, `video.period_margin_s: 0` — no warm-up, half-time or walk-off),

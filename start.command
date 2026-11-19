@@ -1,7 +1,8 @@
 #!/bin/bash
-# Double-click in Finder to open the dashboard (macOS): global video analysis + the Offside tab.
-# Also runs on Linux (./start.command); on Windows use start.bat. A GPU is used automatically when there is one.
-# First run creates .venv (shared by global_video_analysis/ and offside_code/) and installs the requirements.
+# Double-click in Finder to open the dashboard (macOS; on Linux: ./start.command). Windows: start.bat.
+# setup_env.py does the work: picks a supported Python (3.12-3.14), builds .venv with the exact package versions
+# of constraints.txt (the same on every computer), the GPU runtime when there is an NVIDIA GPU, then starts the
+# dashboard. Any Python 3.8+ can bootstrap it (the Mac's /usr/bin/python3 is enough).
 cd "$(dirname "$0")" || exit 1
 REQ="-r global_video_analysis/requirements.txt -r offside_code/requirements.txt"
 if [ ! -x .venv/bin/python ]; then
@@ -29,5 +30,12 @@ if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then
     "${ACCEL[@]}" --probe-cuda || echo "(CUDA still fails: python -m football_eval.accel --doctor in global_video_analysis)"
     echo "$PKG" > .venv/.gpu_setup_tried
   fi
+done
+if [ -z "$BOOT" ]; then
+  echo "Python 3 not found. Install Python 3.13 from https://www.python.org/downloads/ (or: brew install python@3.13)"
+  read -r -p "Press Enter to close"; exit 1
 fi
-exec .venv/bin/python global_video_analysis/scripts/launcher.py "$@"
+"$BOOT" setup_env.py --run "$@"
+rc=$?
+if [ $rc -ne 0 ]; then read -r -p "(exit code $rc) Press Enter to close"; fi
+exit $rc

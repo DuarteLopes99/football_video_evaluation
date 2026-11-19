@@ -8,7 +8,6 @@ rem Diagnosis: .venv\Scripts\python -m football_eval.accel --doctor   (run insid
 rem Retry the GPU set-up: delete .venv\.gpu_setup_tried
 setlocal
 cd /d "%~dp0"
-rem UTF-8 everywhere (reports, setups and logs contain accents and symbols; Windows defaults to cp1252)
 set PYTHONUTF8=1
 set PYTHONIOENCODING=utf-8
 set REQ=-r global_video_analysis\requirements.txt -r offside_code\requirements.txt
@@ -66,3 +65,11 @@ echo [gpu] to retry the automatic GPU set-up, delete .venv\.gpu_setup_tried
 :run
 %PY% global_video_analysis\scripts\launcher.py %*
 if errorlevel 1 pause
+exit /b %errorlevel%
+
+:nopython
+echo Python not found. Install Python 3.13 (64-bit):
+echo   https://www.python.org/downloads/windows/   or   winget install -e --id Python.Python.3.13
+echo then double-click start.bat again.
+pause
+exit /b 1

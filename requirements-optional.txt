@@ -1,0 +1,8 @@
+# Optional upgrades, NOT installed by setup_env.py (heavy: PyTorch). Install into the venv when you need them:
+#   .venv/bin/python -m pip install -c constraints.txt <package>      (Windows: .venv\Scripts\python -m pip ...)
+# PyTorch with CUDA on an NVIDIA computer: install torch first from https://pytorch.org/get-started/locally/
+ultralytics>=8.3      # YOLO11 / YOLO26 / RT-DETR detectors and pitch-keypoint pose models (detection.backend: ultralytics)
+supervision>=0.25     # ByteTrack (tracking.backend: bytetrack)
+transformers>=4.45    # SigLIP team embeddings (teams.backend: siglip)
+pytesseract           # scoreboard OCR (needs the tesseract program)
+statsbombpy           # re-download the xG training data (scripts/train_xg.py)

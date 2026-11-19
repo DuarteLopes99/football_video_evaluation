@@ -1,0 +1,8 @@
+# Everything the dashboard, both projects, the notebooks and the tests need, pinned by constraints.txt.
+# Use setup_env.py (start.command / start.bat run it) rather than pip directly: it also picks a supported
+# Python and the right detector runtime (CPU or GPU) for this computer.
+-c constraints.txt
+-r global_video_analysis/requirements.txt
+-r offside_code/requirements.txt
+jupyter          # notebooks
+pytest           # tests

@@ -65,6 +65,13 @@ def main():
         pre.setdefault("tab", "live")
     if a.force:
         pre["force"] = True
+    try:                                    # same Python / package versions as constraints.txt?
+        from football_eval.envcheck import check
+        problems = check()
+        if problems:
+            print("Environment differs from constraints.txt (run setup_env.py to fix):\n  - " + "\n  - ".join(problems))
+    except Exception as e:  # noqa: BLE001 — informative only
+        print(f"(environment check failed: {e})")
     try:                                    # which device the analysis will use (GPU automatically when there is one)
         from football_eval.accel import describe
         print("Hardware acceleration:\n  " + describe().replace("\n", "\n  "))

@@ -22,6 +22,11 @@ far edge of the grass by less than ~half a body height = touchline, more = stand
 Person type: ``pitch`` -> kit classifier (player / goalkeeper / referee / unknown); ``touchline`` -> ``staff``, or
 ``steward`` when the torso is fluorescent hi-vis; ``stands`` -> ``spectator`` (``steward`` when hi-vis).
 Per track, the type seen in most of its frames wins (:func:`track_types`).
+
+**Extra person** (setup, Kits step): people clicked as *coach*, *fan*, *police* or *security* are classes of the kit
+classifier that map to ``staff`` / ``spectator`` / ``police`` / ``steward``. On the pitch they stop a coach in a team
+tracksuit or a steward on the grass from being counted as a player; off the pitch they refine the zone rule
+(``police`` only exists through these clicks). A track clicked as an extra person keeps that type.
 """
 from __future__ import annotations
 
@@ -32,8 +37,8 @@ import numpy as np
 import pandas as pd
 
 ZONES = ("pitch", "touchline", "stands")
-OFF_PITCH_TYPES = ("staff", "spectator", "steward")
-TYPE_LABEL = {"staff": "STAFF", "spectator": "FAN", "steward": "SEC"}
+OFF_PITCH_TYPES = ("staff", "spectator", "steward", "police")
+TYPE_LABEL = {"staff": "STAFF", "spectator": "FAN", "steward": "SEC", "police": "POL"}
 TYPE_DESCRIPTION = {
     "player": "outfield player (kit of one of the two teams)",
     "goalkeeper": "goalkeeper (kit clicked in the setup, or found in the penalty area)",
@@ -41,6 +46,7 @@ TYPE_DESCRIPTION = {
     "staff": "off the pitch, next to the touchline: coaches, substitutes, bench, ball boys",
     "spectator": "off the pitch, in the stands / behind the fences: fans",
     "steward": "off the pitch in a fluorescent hi-vis vest: security / stewards",
+    "police": "police officer (looks like an 'Extra person: police' clicked in the setup)",
     "unknown": "on the pitch but not matching any clicked kit (occluded, blurred, or a person not in the setup)",
 }
 
@@ -137,7 +143,7 @@ def people_summary(tracks: pd.DataFrame) -> pd.DataFrame:
     n_fr = max(tracks.frame.nunique(), 1)
     rows = []
     team = tracks.team if "team" in tracks else pd.Series(0, index=tracks.index)
-    for c in ("player", "goalkeeper", "referee", "unknown", "staff", "steward", "spectator", "outside"):
+    for c in ("player", "goalkeeper", "referee", "unknown", "staff", "steward", "police", "spectator", "outside"):
         if c == "player":
             q = tracks[(tracks.cls == "player") & (team >= 0)]
         elif c == "unknown":

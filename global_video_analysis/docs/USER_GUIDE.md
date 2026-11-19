@@ -13,7 +13,7 @@ This guide is for using the system day to day. Technical details are in the READ
 | **Windows:** double-click `start.bat` in `football_video_evaluation\` | the same on a PC (Python 3.10+ from python.org needed once); *Desktop shortcut* makes `.bat` files |
 | `python scripts/launcher.py --video <file> --start` | starts processing that recording right away (see §7) |
 
-The first start creates the Python environment, which takes a few minutes once. A Terminal window stays open
+The first start creates the Python environment (`setup_env.py`: Python 3.12-3.14 and the exact package versions of `constraints.txt`, the same on every computer), which takes a few minutes once. A Terminal window stays open
 while the launcher runs. Closing it, or the **Quit** button at the top right, stops the launcher and every job
 it started. If the launcher is already running, a shortcut just opens it in the browser with the chosen video.
 
@@ -51,6 +51,10 @@ you type:
    snapped to the detected player (a loose box is mostly grass and spoils the shirt colour).
    These clicks drive the boxes you see during processing: every player is matched to the nearest clicked samples,
    the tracks you clicked keep your label (marked `*` on the live screen).
+   **Extra person** (optional, under the team buttons): *Coach / staff*, *Fan*, *Police*, *Security / steward*. Click
+   1-3 of each when they get boxed as players, e.g. a coach in a team tracksuit, a steward or police officer on the
+   grass, fans standing behind the goal line. They are never counted as players; police only appears through these
+   clicks (`POL`).
 5. **Pitch landmarks:** click the points you can see (centre spot, corners of the box, …), then check the overlay.
    **Near touchline not in the picture?** Tick *Show the area outside the picture*: a grey margin appears around
    the frame. Follow the painted lines and click where a near-side landmark *would* be (e.g. `halfway_bottom`, a box
@@ -94,7 +98,8 @@ Sections filled in by the assistant show **Pre-filled, not yet confirmed**. Chec
     grey = on the pitch but not decided yet. Labels show the short team name + track number; `*` = a player you clicked
     in the setup.
   * people who are not playing, as thin tagged boxes: `STAFF` (teal: coaches, bench, ball boys next to the touchline),
-    `SEC` (yellow: hi-vis security), `FAN` (mauve: stands). They are never counted as players.
+    `SEC` (yellow: hi-vis security), `FAN` (mauve: stands), `POL` (dark blue: police, from the *Extra person* clicks).
+    They are never counted as players.
   * if the near touchline is out of view, the status bar says how far before it the picture ends and the minimap
     darkens that strip.
   
@@ -175,11 +180,14 @@ the match analysis.
 | "address already in use" | the launcher is already running: use the open tab, or press *Quit* there first |
 | Lines far from the painted lines | review → *Camera repair*; in the setup add landmark frames (≥ 4 clicks each) near each kick-off and every 5–10 min — each one is a checkpoint the camera restarts from |
 | Report shows zeros everywhere | open *Who was detected* in the report: it says how many people were found and on how many frames positions exist. 0 % positions = no calibration: click ≥ 4 landmarks on 1–2 frames in the setup |
-| Fans / coaches counted as players | they are separated automatically (`FAN` / `STAFF` / `SEC`); if many fans stand ON the grass behind a goal, lower `pitch.offpitch_margin_m` |
+| Fans / coaches / police counted as players | they are separated automatically (`FAN` / `STAFF` / `SEC`); when one still gets a team box, click 1-3 of them as an **Extra person** in the setup (Kits step) and process again; many fans ON the grass behind a goal: also lower `pitch.offpitch_margin_m` |
+| `Can't read ONNX file: models/yolox.onnx` | the detector model is not in git (too big) and was never downloaded on this computer. Runs now fetch it themselves; offline, run `python scripts/get_models.py` once when online |
 | The log says "no match setup for this video" | the setup's video path has another file name: open the setup for this recording in the launcher (step 1) or pass `--setup` |
 | Teams swapped or mixed | add kit clicks in sun **and** shade on 3–4 moments (setup step 4), then process again. The run prints how many clicked samples are recognised by the others ("leave-one-out"): below ~90 % the kits are hard to tell apart — add samples |
 | Processing too slow | Speed *fast*; make sure `onnxruntime` is installed (`.venv/bin/pip install onnxruntime`, done automatically by start.command); set the periods so half-time is skipped |
-| NVIDIA GPU not used (log says `CPUExecutionProvider`) | `python -m football_eval.accel` (from `global_video_analysis/`, venv active) shows what is found and the fix; usually `pip uninstall -y onnxruntime && pip install "onnxruntime-gpu[cuda,cudnn]"` (start.command / start.bat do it) and an up-to-date NVIDIA driver |
+| NVIDIA GPU not used (log says `CPUExecutionProvider`) | `python -m football_eval.accel` (from `global_video_analysis/`, venv active) shows what is found; `python setup_env.py --force` reinstalls `onnxruntime-gpu`; update the NVIDIA driver |
+| `No matching distribution found for onnxruntime` / `Requires-Python` errors | the computer's Python is not supported (3.15 is too new, 3.11 too old). Run `start.bat` / `start.command` again: `setup_env.py` uses or offers to install Python 3.13 and rebuilds `.venv` |
+| "Environment differs from constraints.txt" at start | packages were installed by hand: `python setup_env.py --force` puts back the pinned versions |
 | Many throw-ins on the camera side missing | the near touchline is out of view: they are inferred when the ball leaves the bottom of the picture (rulebook §3.1) — check them in the review |
 | No shots found | expected on 640 × 360 streams (2–5 px ball): add them in the review, *Missing events* |
 | A job failed | the **Jobs** tab has its full log; the last lines say why |
